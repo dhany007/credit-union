@@ -124,7 +124,8 @@ func TestSavingsAccountMigrationBackfill(t *testing.T) {
 		err := f.db.QueryRow(ctx, `
             SELECT jsonb_build_object(
                 'members',(SELECT jsonb_agg(to_jsonb(m)-'account_number' ORDER BY id) FROM members m),
-                'transactions',(SELECT jsonb_agg(t ORDER BY id) FROM transactions t),
+                'transactions',(SELECT jsonb_agg(to_jsonb(t)-'balance_before'-'balance_after' ORDER BY id)
+                    FROM transactions t),
                 'journal',(SELECT jsonb_agg(j ORDER BY transaction_id,line_no) FROM journal_lines j),
                 'requests',(SELECT jsonb_agg(r ORDER BY user_id,request_key) FROM requests r)
             )::text`).Scan(&result)

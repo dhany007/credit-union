@@ -59,3 +59,9 @@ Additional worked examples are required for rounding, interest, fees, partial an
 - Results use 50-row pages, ordered timestamp/reference descending. Previous/Next navigate all matching history, with no latest-100 ceiling. Applying/resetting a filter starts page one; Reset restores Today/all accounts.
 - Loading a different filter or encountering an error cannot display previous rows as the new result; retry and reset remain available.
 - Anonymous access is denied, identity/contact fields are not included, and history reads do not change balances, journals, or retry outcomes.
+
+## Member balance ledger
+
+- Every new opening deposit, cash deposit, and withdrawal records its actual before/after member savings balance atomically with the journals.
+- Retry, insufficient funds, concurrent posting, or audit/journal failure never duplicates or partially stores a balance movement.
+- All history views expose/display both snapshots, including an opening balance of zero. Older unrecorded snapshots remain explicit null and display as unavailable.

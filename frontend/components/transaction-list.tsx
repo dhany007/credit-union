@@ -18,6 +18,8 @@ type TransactionRow = {
   account_number: string;
   kind: "deposit" | "withdrawal";
   amount: number;
+  balance_before: number | null;
+  balance_after: number | null;
   note: string;
   created_at: string;
   branch: string;
@@ -82,6 +84,7 @@ export function TransactionList() {
   return (
     <Card className="gap-0 overflow-hidden py-0">
       <div className="grid gap-5 border-b p-5">
+        <p className="text-xs text-muted-foreground">{t("Saldo sebelum dan sesudah adalah saldo simpanan anggota. Tanda — berarti snapshot historis tidak tersedia.")}</p>
         <form
           className="flex flex-wrap items-end gap-3"
           onSubmit={(event) => {
@@ -179,7 +182,7 @@ export function TransactionList() {
       ) : (
         <>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-left text-sm">
+            <table className="w-full min-w-[1080px] text-left text-sm">
               <caption className="sr-only">
                 {t("Riwayat transaksi simpanan")}
               </caption>
@@ -197,6 +200,8 @@ export function TransactionList() {
                   <th scope="col" className="p-4 text-right font-medium">
                     {t("Nominal (Rp)")}
                   </th>
+                  <th scope="col" className="p-4 text-right font-medium">{t("Saldo sebelum")}</th>
+                  <th scope="col" className="p-4 text-right font-medium">{t("Saldo sesudah")}</th>
                   <th scope="col" className="p-4 font-medium">
                     {t("KCP / petugas")}
                   </th>
@@ -231,6 +236,12 @@ export function TransactionList() {
                       {row.kind === "deposit" ? "+" : "−"}
                       {money(row.amount)}
                     </td>
+                    <td className="whitespace-nowrap p-4 text-right font-mono text-xs" title={row.balance_before == null ? t("Saldo historis tidak tersedia") : undefined}>
+                      {row.balance_before == null ? "—" : money(row.balance_before)}
+                    </td>
+                    <td className="whitespace-nowrap p-4 text-right font-mono text-xs" title={row.balance_after == null ? t("Saldo historis tidak tersedia") : undefined}>
+                      {row.balance_after == null ? "—" : money(row.balance_after)}
+                    </td>
                     <td className="p-4 text-xs">
                       <p>{row.branch}</p>
                       <p className="mt-1 text-muted-foreground">{row.actor}</p>
@@ -250,7 +261,7 @@ export function TransactionList() {
                 {result.rows.length === 0 && (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={8}
                       className="p-12 text-center text-muted-foreground"
                     >
                       {query.accountNumber

@@ -20,6 +20,8 @@ Use Proposed, Accepted, Rejected, or Superseded. Record acceptance dates when ap
 
 - [ADR-0010: Business dates and transaction pagination](0010-transaction-business-dates.md) — Accepted
 
+- [ADR-0011: Member balance snapshots](0011-member-balance-snapshots.md) — Accepted
+
 ## New ADR template
 
 ```text

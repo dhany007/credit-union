@@ -70,3 +70,5 @@ The project owner explicitly selected loan application and approval only. Disbur
 ## Local implementation status
 
 See [implementation notes](implementation.md) for completed code, verification, and assumptions. Approval is disabled by default until an explicit limit is configured. Pilot readiness remains incomplete; the documentation checkbox is not production sign-off.
+
+- [x] Record and display atomic before/after member balance snapshots on new cash movements; preserve unknown historical values.

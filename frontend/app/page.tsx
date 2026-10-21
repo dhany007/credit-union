@@ -70,6 +70,8 @@ type Loan = {
   decision_by: string;
 };
 type Transaction = {
+  balance_before: number | null;
+  balance_after: number | null;
   reference: string;
   kind: string;
   amount: number;
@@ -1393,6 +1395,11 @@ function History({
                     {money(transaction.amount)}
                   </p>
                 </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {transaction.balance_before == null || transaction.balance_after == null
+                    ? t("Saldo historis tidak tersedia")
+                    : `${t("Saldo sebelum")}: ${money(transaction.balance_before)} → ${t("Saldo sesudah")}: ${money(transaction.balance_after)}`}
+                </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {transaction.branch} · {transaction.actor}
                 </p>

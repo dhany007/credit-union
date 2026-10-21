@@ -2,6 +2,8 @@
 
 A small multi-KCP cooperative application: Go API, PostgreSQL, and Next.js with shadcn/ui and the selected tweakcn Zen Inspired Theme.
 
+Start with [Local Docker setup](#local-docker-setup) and [Makefile commands](#makefile-commands). The root [Makefile](Makefile) provides `make up`, `make seed`, and `make release VERSION=v0.1.0`.
+
 ## Implemented MVP
 
 - Teller/Supervisor login with hashed passwords and database-backed HTTP-only sessions.
@@ -10,7 +12,7 @@ A small multi-KCP cooperative application: Go API, PostgreSQL, and Next.js with 
 - Cross-KCP cash deposits and withdrawals by exact account-number lookup, with balance/cash checks and transaction history.
 - Dedicated Transactions menu with exact account-number filtering and cooperative-wide Teller/Supervisor visibility with Today, Last 7 days, Last 30 days, inclusive custom dates, and 50-row pagination (including opening deposits).
 - Loan applications, assigned responsible KCP, Supervisor decisions, and decision reasons.
-- Balanced transaction journals, actor/KCP audit records, request retry protection, and concurrent withdrawal protection.
+- Balanced transaction journals, atomic before/after member balance snapshots, actor/KCP audit records, request retry protection, and concurrent withdrawal protection.
 
 No disbursement, repayment, automatic savings interest, or member portal is enabled. Loan approval does not move cash or create outstanding principal.
 
@@ -21,11 +23,32 @@ See the [local Docker runbook](docs/deployment/docker-local.md) for configuratio
 On a fresh checkout only, copy `.env.docker.example` to `.env.docker` and set unique passwords. Keep the existing file if already configured. Then run from the project root:
 
 ```bash
-docker compose --env-file .env.docker up --build -d --wait
-docker compose --env-file .env.docker run --rm seed
+make up
+# Optional: seed staff plus 15 demo members / 7,500 cash transactions.
+make seed
 ```
 
-Open **http://localhost:3000**. Sign in with a development username below and the `DEV_SEED_PASSWORD` from `.env.docker`. Only the frontend port is published, bound to localhost. Seed is explicit and does not run on normal startup.
+Open **http://localhost:3000**. Sign in with a development username below and the `DEV_SEED_PASSWORD` from `.env.docker`. Only the frontend port is published, bound to localhost. Seed is explicit and does not run on normal startup. For staff accounts without demo members, run `docker compose --env-file .env.docker run --rm seed` after `make up`.
+
+### Optional demo members and transactions
+
+`make seed` creates the KCPs and staff accounts, then loads the reconciled local dummy fixture. The lower-level Compose `seed` service creates only KCPs and staff. Database contents live in a local Docker volume and are not included in a Git clone.
+
+To populate a fresh local database with 15 synthetic members and 7,500 reconciled cash transactions, follow [Local demo data](docs/development/demo-data.md#fresh-clone-setup). `make seed` handles startup, staff seeding, backup, dummy import, reconciliation, and service restart. Ordinary startup never inserts demo financial data. Existing local installations that already loaded the fixture do not need to run it again.
+
+## Makefile commands
+
+The root [Makefile](Makefile) is the command entry point. Run it from the repository root. It requires GNU Make, Bash, Docker with Compose, and a configured `.env.docker`. On Windows, use WSL with Docker Desktop integration enabled. No host Go or Node installation is needed for the Docker workflow. Run `make help` (or just `make`) to list the available commands.
+
+```bash
+make up                         # Build, migrate, start, and wait for healthy services
+make seed                       # Also seed staff and the fixed 2026 dummy dataset
+make release VERSION=v0.1.0      # New GitHub tag and Release from remote main
+```
+
+`make seed` keeps a private backup under `.local/backups/`, pauses financial writers during import, and resumes services even if the import fails. A matching unchanged fixture is verified without duplicating data. Existing financial data that is not this batch is refused.
+
+`make release` requires GitHub CLI (`gh`), `gh auth login`, repository write access, and a new stable `vMAJOR.MINOR.PATCH` version. It resolves the configured GitHub repository and remote `main` SHA, rejects an existing tag, and publishes a GitHub Release with generated notes at that SHA. Local working files and the current branch are not uploaded. Merge the intended changes into `main` before releasing. This command publishes a release; it does not deploy containers or build release assets.
 
 ## Local WSL setup
 
@@ -82,7 +105,7 @@ No production limit has been invented or enabled. The tests use a clearly isolat
 - The central ledger uses KCP dimensions; branch cash can be reconciled, but separate fully balanced branch books/inter-KCP clearing are not implemented.
 - Member search returns at most 100 matches; search by name, member number, full account number, or exact NIK to locate others. The cash form resolves a full account number directly, independent of the latest-100 member list. Select the member before opening cash/loan forms when needed. Member-specific history and loan lists are limited to 100. The dedicated Transactions menu has date filtering and pagination.
 
-These assumptions need business review before real-money use. No member identity or financial sample data is seeded.
+These assumptions need business review before real-money use. The standard staff seed creates no member or financial sample data; the optional local demo fixture is documented separately above.
 
 ## Verification
 
@@ -110,7 +133,7 @@ docs/           Business decisions, diagrams, ADRs, and roadmap
 
 The API uses Gin. Direct Go commands are `go run ./cmd/api`, `go run ./cmd/migrate`, and `go run ./dev/cmd/seed` from `backend/`; the existing shell wrappers above remain supported.
 
-Schema setup uses the explicit migration command with an ordered version ledger and transaction-scoped migration lock. The immutable initial schema is version 1; version 2 assigns savings account numbers to existing and future members. Run migrations before starting an updated API; see the Docker runbook for the local maintenance procedure. Frontend UI supports Indonesian/English and light/dark themes, with browser-persisted preferences on login and staff screens. Project documentation is English.
+Schema setup uses the explicit migration command with an ordered version ledger and transaction-scoped migration lock. The immutable initial schema is version 1; version 2 assigns savings account numbers to existing and future members; version 3 records before/after member balance snapshots for new cash movements. Run migrations before starting an updated API; see the Docker runbook for the local maintenance procedure. Frontend UI supports Indonesian/English and light/dark themes, with browser-persisted preferences on login and staff screens. Project documentation is English.
 
 Before a real pilot: approve product and accounting rules, configure approval authority, provide correction/reversal and cash-handling procedures, test backups/restores, configure HTTPS/secure cookies, and replace development identities. This build is for local review, not a production rollout.
 
