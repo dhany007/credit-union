@@ -45,3 +45,12 @@ Begin the small implementation steps in the [roadmap](roadmap.md). Resolve only 
 - [TDD and validation evidence](testing/gin-refactor.tdd.md)
 
 - [Local Docker deployment runbook](deployment/docker-local.md)
+
+- [Savings account numbers tech plan](tech-plan-savings-account-numbers.md)
+- [Savings account numbers TDD evidence](testing/savings-account-numbers.tdd.md)
+
+- [Account-filtered transaction history tech plan](tech-plan-transaction-history.md)
+- [Transaction history TDD evidence](testing/transaction-history.tdd.md)
+
+- [Transaction date filters tech plan](tech-plan-transaction-date-filters.md)
+- [Transaction date filters TDD evidence](testing/transaction-date-filters.tdd.md)

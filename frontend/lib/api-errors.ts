@@ -1,6 +1,11 @@
 import type { Locale } from "@/lib/messages";
 
 const errors: Record<string, string> = {
+  "Invalid date filter. Check period and start/end dates": "Filter tanggal tidak valid. Periksa periode dan tanggal mulai/akhir",
+  "Invalid pagination cursor. Apply the filters again": "Halaman tidak valid. Terapkan kembali filter",
+  "Invalid account number. Enter exactly 10 digits":
+    "Nomor rekening tidak valid. Masukkan tepat 10 digit",
+  "Savings account not found": "Rekening simpanan tidak ditemukan",
   "Your role cannot perform this action":
     "Peran Anda tidak berwenang melakukan tindakan ini",
   "Check NIK, name, phone, and address":

@@ -33,6 +33,10 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
+	return newFixtureWithMigration(t, true)
+}
+
+func newFixtureWithMigration(t *testing.T, migrate bool) *fixture {
 	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
@@ -65,7 +69,12 @@ func newFixture(t *testing.T) *fixture {
 		}
 		admin.Close()
 	})
-	if err = database.Migrate(ctx, pool); err != nil {
+	if migrate {
+		err = database.Migrate(ctx, pool)
+	} else {
+		_, err = pool.Exec(ctx, database.Schema)
+	}
+	if err != nil {
 		t.Fatal(err)
 	}
 	if err = auth.Seed(ctx, pool, "isolated-test-password"); err != nil {

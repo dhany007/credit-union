@@ -54,7 +54,7 @@ func TestMVP(t *testing.T) {
 		t.Fatal(e)
 	}
 	defer db.Close()
-	if _, e = db.Exec(ctx, database.Schema); e != nil {
+	if e = database.Migrate(ctx, db); e != nil {
 		t.Fatal(e)
 	}
 	if e = auth.Seed(ctx, db, "test-password-12345"); e != nil {

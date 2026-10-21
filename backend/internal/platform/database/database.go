@@ -28,12 +28,6 @@ func Open(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-// Migrate applies the explicit idempotent initial schema.
-func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
-	_, err := pool.Exec(ctx, Schema)
-	return err
-}
-
 // Rollback uses a bounded cleanup context even when the request was cancelled.
 func Rollback(tx pgx.Tx) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)

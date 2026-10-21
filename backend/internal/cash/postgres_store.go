@@ -111,3 +111,37 @@ func (s *PostgresStore) Branches(ctx context.Context) ([]Branch, error) {
 	}
 	return out, rows.Err()
 }
+
+// List returns the latest 100 rows in a deterministic order. Filter values stay parameterized.
+func (s *PostgresStore) List(ctx context.Context, accountNumber string) ([]ListedTransaction, error) {
+	query := `
+        SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,u.name,
+            m.id,m.name,m.account_number
+        FROM transactions t
+        JOIN members m ON m.id=t.member_id
+        JOIN branches b ON b.id=t.branch_id
+        JOIN users u ON u.id=t.actor_id
+    `
+	var args []any
+	if accountNumber != "" {
+		query += ` WHERE m.account_number=$1`
+		args = append(args, accountNumber)
+	}
+	query += ` ORDER BY t.created_at DESC,t.id DESC LIMIT 100`
+	rows, err := s.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []ListedTransaction{}
+	for rows.Next() {
+		var item ListedTransaction
+		if err = rows.Scan(&item.Reference, &item.Kind, &item.Amount, &item.Note, &item.CreatedAt,
+			&item.Branch, &item.Actor, &item.MemberID, &item.MemberName, &item.AccountNumber); err != nil {
+			return nil, err
+		}
+		item.MemberNumber = fmt.Sprintf("CU-%06d", item.MemberID)
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}

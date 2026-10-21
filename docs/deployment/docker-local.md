@@ -47,7 +47,7 @@ The last command creates `teller.a`, `teller.b`, and `supervisor`, using `DEV_SE
 
 Open **http://localhost:3000** (or the selected `WEB_PORT`) and use `localhost` consistently. Use the generated local password from `.env.docker` to sign in. The API is available through `/api`; API and database ports are not published to the host.
 
-Startup order is database health -> successful initial migration -> API health -> frontend. `migrate` exits with code 0 on success; it is not a long-running service. Schema setup is the existing idempotent initial migration, not a new automatic versioned migration system.
+Startup order is database health -> successful initial migration -> API health -> frontend. `migrate` exits with code 0 on success; it is not a long-running service. Schema setup uses ordered, tracked embedded migrations. Version 1 preserves the existing initial schema; version 2 allocates savings account numbers. The one-shot migration service applies pending versions before the API starts.
 
 ```mermaid
 flowchart LR
@@ -93,7 +93,7 @@ docker compose --env-file .env.docker exec -T db pg_dump -U credit_union -d cred
 
 Check that the command succeeds and the file is non-empty. Backups contain identity and financial data. Keep `.env.docker` separately so the database remains accessible. Test recovery in a separate database before relying on a backup; do not overwrite the active database as a smoke check.
 
-For an application rollback, return the source to a known previous Docker-compatible commit, then rebuild with `up --build -d --wait`. Retain the database volume. There is no automatic schema downgrade: if a later release changes the schema, review compatibility before rolling back and prefer a forward fix. This local initial schema command is not a production migration/rollback strategy.
+For an application rollback, return the source to a known previous Docker-compatible commit, then rebuild with `up --build -d --wait`. Retain the database volume. There is no automatic schema downgrade: if a later release changes the schema, review compatibility before rolling back and prefer a forward fix. For the account-number release, retain the additive account column, sequence, and migration ledger during application rollback. Never delete or reset issued account numbers. This local maintenance procedure is not a production zero-downtime migration strategy.
 
 ## Troubleshooting
 
@@ -120,3 +120,18 @@ Validated through the Windows Docker CLI against Docker Desktop's Linux engine (
 - Repeated `up -d --wait`: passed using the same database volume and idempotent schema command.
 
 No member or financial transaction fixtures were inserted during this Docker smoke test. This validation covers local packaging and connectivity, not backup recovery or production readiness.
+
+## Account-number upgrade maintenance
+
+Build images before stopping services. Back up the database first using the backup section above. For a local upgrade that already has data, stop writers while the small transactional backfill runs:
+
+```bash
+docker compose --env-file .env.docker build api web
+docker compose --env-file .env.docker stop web api
+docker compose --env-file .env.docker run --rm --no-deps migrate
+docker compose --env-file .env.docker up -d --no-build --wait
+```
+
+The migration acquires a transaction-scoped schema-specific advisory lock with a five-second lock timeout, adds the account column/sequence, assigns numbers to existing members, and records version 2 in the same transaction. A lock or migration failure leaves the ledger/schema changes uncommitted; inspect migration logs and resolve the cause before retrying. Keep the database volume. Repeated migration runs retain issued numbers.
+
+Validate member counts, total savings, transaction counts, and journal counts against the pre-upgrade values. Each member must have one distinct non-null 10-digit account number. Existing stored registration replay JSON is intentionally not rewritten; current member lookup supplies its account number. For a large or live production database, plan a phased backfill separately.

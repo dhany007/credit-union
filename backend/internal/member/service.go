@@ -6,6 +6,7 @@ import (
 	"credit-union/backend/internal/platform/database"
 	"credit-union/backend/internal/platform/fault"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -54,7 +55,7 @@ func (s *Service) Register(
 		return nil, fault.New(fault.Invalid, "Check NIK, name, phone, and address")
 	}
 	return s.runner.Run(ctx, cmd, fingerprintInput(input), func(tx pgx.Tx) (any, error) {
-		id, err := s.store.Insert(ctx, tx, input, actor.BranchID)
+		id, accountNumber, err := s.store.Insert(ctx, tx, input, actor.BranchID)
 		if err != nil {
 			return nil, fmt.Errorf("insert member: %w", err)
 		}
@@ -65,9 +66,9 @@ func (s *Service) Register(
 		if err = database.Audit(ctx, tx, actor.ID, "member.register", strconv.FormatInt(id, 10)); err != nil {
 			return nil, err
 		}
-		// Keep legacy map encoding for the initially persisted registration result.
+		// Old persisted replay results remain untouched; new registrations include the account.
 		return map[string]any{
-			"id": id, "number": fmt.Sprintf("CU-%06d", id),
+			"id": id, "number": fmt.Sprintf("CU-%06d", id), "account_number": accountNumber,
 			"reference": ref, "balance": openingDeposit,
 		}, nil
 	})
@@ -80,4 +81,22 @@ func (s *Service) List(ctx context.Context, search string) ([]Member, error) {
 		return nil, fault.New(fault.Invalid, "Search is too long")
 	}
 	return s.store.List(ctx, search)
+}
+
+var accountNumberPattern = regexp.MustCompile(`^[1-9][0-9]{9}$`)
+
+// FindByAccountNumber resolves the current account owner across all KCPs.
+func (s *Service) FindByAccountNumber(ctx context.Context, number string) (Member, error) {
+	number = strings.TrimSpace(number)
+	if !accountNumberPattern.MatchString(number) {
+		return Member{}, fault.New(fault.Invalid, "Invalid account number. Enter exactly 10 digits")
+	}
+	item, err := s.store.FindByAccountNumber(ctx, number)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Member{}, fault.New(fault.NotFound, "Savings account not found")
+	}
+	if err != nil {
+		return Member{}, fmt.Errorf("lookup savings account: %w", err)
+	}
+	return item, nil
 }

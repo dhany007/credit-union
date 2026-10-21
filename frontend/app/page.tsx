@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Users,
   Wallet,
+  ReceiptText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { TransactionList } from "@/components/transaction-list";
 
 type User = {
   id: number;
@@ -38,6 +41,7 @@ type User = {
 type Member = {
   id: number;
   number: string;
+  account_number: string;
   name: string;
   nik_masked: string;
   phone: string;
@@ -73,23 +77,6 @@ type Transaction = {
   branch: string;
   actor: string;
 };
-async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`/api${path}`, {
-    ...options,
-    cache: "no-store",
-    headers: { "Content-Type": "application/json", ...options.headers },
-  });
-  const data = await response
-    .json()
-    .catch(() => ({
-      error: "The server could not be reached. Please try again.",
-    }));
-  if (!response.ok)
-    throw new Error(
-      data.error || "Operation failed. Please retry with the same reference.",
-    );
-  return data;
-}
 function Field({
   label,
   children,
@@ -143,16 +130,22 @@ export default function Home() {
   const requestRef = useRef<Record<string, { payload: string; key: string }>>(
     {},
   );
-  const member = members.find((m) => m.id === selected);
-  async function refresh() {
+  const [resolvedMember, setResolvedMember] = useState<Member | null>(null);
+  const [accountInput, setAccountInput] = useState("");
+  const accountLookupVersion = useRef(0);
+  const member =
+    members.find((m) => m.id === selected) ??
+    (resolvedMember?.id === selected ? resolvedMember : undefined);
+  async function refresh(searchQuery = query) {
     const [ms, ls, mt] = await Promise.all([
-      api<Member[]>(`/members?search=${encodeURIComponent(query)}`),
+      api<Member[]>(`/members?search=${encodeURIComponent(searchQuery)}`),
       api<Loan[]>("/loans"),
       api<Meta>("/meta"),
     ]);
     setMembers(ms);
     setLoans(ls);
     setMeta(mt);
+    return ms;
   }
   useEffect(() => {
     api<User>("/me")
@@ -206,11 +199,34 @@ export default function Home() {
     return result;
   }
   function navigate(value: string) {
+    accountLookupVersion.current++;
+    if (value === "cash") setAccountInput(member?.account_number ?? "");
     setTab(value);
     setError("");
     setSuccess(null);
     setConfirmCash(false);
     setDecision(null);
+  }
+  async function lookupAccount() {
+    if (busy) return;
+    const version = ++accountLookupVersion.current;
+    const number = accountInput.trim();
+    setSelected(null);
+    setResolvedMember(null);
+    setConfirmCash(false);
+    await run(async () => {
+      const found = await api<Member>(
+        `/members/by-account/${encodeURIComponent(number)}`,
+      );
+      if (version !== accountLookupVersion.current) return;
+      setMembers((current) => [
+        found,
+        ...current.filter((item) => item.id !== found.id),
+      ]);
+      setResolvedMember(found);
+      setSelected(found.id);
+      setAccountInput(found.account_number);
+    });
   }
   if (boot || !ready)
     return (
@@ -330,11 +346,15 @@ export default function Home() {
         <p className="mb-3 hidden text-[10px] uppercase tracking-[.2em] text-muted-foreground lg:block">
           {t("Layanan utama")}
         </p>
-        <nav aria-label={t("Layanan utama")} className="flex gap-1 lg:flex-col">
+        <nav
+          aria-label={t("Layanan utama")}
+          className="flex flex-wrap gap-1 lg:flex-col"
+        >
           {[
             { id: "members", label: t("Anggota"), icon: Users },
             { id: "cash", label: t("Setor & tarik"), icon: Wallet },
             { id: "loans", label: t("Pinjaman"), icon: CreditCard },
+            { id: "transactions", label: t("Transaksi"), icon: ReceiptText },
           ].map((item) => (
             <button
               key={item.id}
@@ -391,6 +411,9 @@ export default function Home() {
                 run(async () => {
                   await api("/logout", { method: "POST" });
                   setUser(null);
+                  setResolvedMember(null);
+                  setAccountInput("");
+                  accountLookupVersion.current++;
                   setMembers([]);
                   setSelected(null);
                   setHistory([]);
@@ -413,14 +436,18 @@ export default function Home() {
                   ? t("Kenali anggota Anda")
                   : tab === "cash"
                     ? t("Transaksi tunai")
-                    : t("Pengajuan & keputusan")}
+                    : tab === "transactions"
+                      ? t("Riwayat simpanan")
+                      : t("Pengajuan & keputusan")}
               </p>
               <h1 className="font-serif text-4xl">
                 {tab === "members"
                   ? t("Keanggotaan")
                   : tab === "cash"
                     ? t("Setoran & penarikan")
-                    : t("Layanan pinjaman")}
+                    : tab === "transactions"
+                      ? t("Transaksi")
+                      : t("Layanan pinjaman")}
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
                 {tab === "members"
@@ -429,24 +456,29 @@ export default function Home() {
                     ? t(
                         "Catat transaksi pada rekening anggota yang sama, dari KCP mana saja.",
                       )
-                    : t(
-                        "Kelola pengajuan anggota. Pencairan belum tersedia pada fase ini.",
-                      )}
+                    : tab === "transactions"
+                      ? t(
+                          "Tinjau setoran dan penarikan anggota dari seluruh KCP.",
+                        )
+                      : t(
+                          "Kelola pengajuan anggota. Pencairan belum tersedia pada fase ini.",
+                        )}
               </p>
             </div>
-            {user.role === "teller" && tab !== "cash" && (
-              <Button
-                onClick={() => {
-                  if (tab === "members") setNewMember(!newMember);
-                  else setNewLoan(!newLoan);
-                }}
-              >
-                <Plus size={16} />
-                {tab === "members"
-                  ? t("Daftarkan anggota")
-                  : t("Ajukan pinjaman")}
-              </Button>
-            )}
+            {user.role === "teller" &&
+              (tab === "members" || tab === "loans") && (
+                <Button
+                  onClick={() => {
+                    if (tab === "members") setNewMember(!newMember);
+                    else setNewLoan(!newLoan);
+                  }}
+                >
+                  <Plus size={16} />
+                  {tab === "members"
+                    ? t("Daftarkan anggota")
+                    : t("Ajukan pinjaman")}
+                </Button>
+              )}
           </div>
           {error && (
             <div
@@ -510,19 +542,35 @@ export default function Home() {
                           const result = await mutate<{
                             id: number;
                             number: string;
+                            account_number?: string;
                             reference: string;
                           }>("/members", input);
                           setQuery("");
                           setSearch("");
-                          await refresh();
+                          const currentMembers = await refresh("");
+                          const current =
+                            currentMembers.find(
+                              (item) => item.id === result.id,
+                            ) ??
+                            (
+                              await api<Member[]>(
+                                `/members?search=${encodeURIComponent(result.number)}`,
+                              )
+                            ).find((item) => item.id === result.id);
+                          const accountNumber =
+                            result.account_number ?? current?.account_number;
+                          if (!accountNumber)
+                            throw new Error("Savings account not found");
+                          setResolvedMember(current ?? null);
                           setSelected(result.id);
                           form.reset();
                           setNewMember(false);
                           setLastReceipt(result.reference);
                           setSuccess({
-                            key: "Anggota {number} terdaftar. Setoran awal Rp50.000 diterima. Referensi: {reference}",
+                            key: "Anggota {number} terdaftar. Rekening {account}. Setoran awal Rp50.000 diterima. Referensi: {reference}",
                             values: {
                               number: result.number,
+                              account: accountNumber,
                               reference: result.reference,
                             },
                           });
@@ -568,7 +616,7 @@ export default function Home() {
                       <div className="flex items-center gap-3 md:col-span-2">
                         <Button disabled={busy}>
                           {busy ? <Loader2 className="animate-spin" /> : null}
-                          {t("Daftarkan & catat Rp50.000")}
+                          {t("Daftar")}
                         </Button>
                         <Button
                           type="button"
@@ -612,7 +660,9 @@ export default function Home() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="w-64 pl-9"
-                        placeholder={t("Nama, nomor anggota, atau NIK")}
+                        placeholder={t(
+                          "Nama, nomor anggota, rekening, atau NIK",
+                        )}
                       />
                       <button type="submit" className="sr-only">
                         {t("Cari")}
@@ -652,7 +702,8 @@ export default function Home() {
                                   {m.name}
                                 </span>
                                 <span className="mt-1 block font-mono text-[11px] text-muted-foreground">
-                                  {m.number}
+                                  {m.number} · {t("Rekening")}{" "}
+                                  {m.account_number}
                                 </span>
                               </button>
                             </td>
@@ -696,6 +747,14 @@ export default function Home() {
                           {t("NIK")} {member.nik_masked}
                         </p>
                         <dl className="my-6 grid gap-4 text-sm">
+                          <div>
+                            <dt className="mb-1 text-xs text-muted-foreground">
+                              {t("Nomor rekening")}
+                            </dt>
+                            <dd className="font-mono">
+                              {member.account_number}
+                            </dd>
+                          </div>
                           <div>
                             <dt className="mb-1 text-xs text-muted-foreground">
                               {t("KCP asal")}
@@ -783,10 +842,44 @@ export default function Home() {
                     ))}
                   </div>
                   <form
+                    className="mb-6 grid gap-3"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void lookupAccount();
+                    }}
+                  >
+                    <Field label={t("Nomor rekening")}>
+                      <Input
+                        aria-label={t("Nomor rekening")}
+                        inputMode="numeric"
+                        pattern="[1-9][0-9]{9}"
+                        minLength={10}
+                        maxLength={10}
+                        required
+                        value={accountInput}
+                        disabled={busy}
+                        onChange={(event) => {
+                          accountLookupVersion.current++;
+                          setAccountInput(event.target.value);
+                          setSelected(null);
+                          setResolvedMember(null);
+                          setConfirmCash(false);
+                          setError("");
+                          setSuccess(null);
+                        }}
+                        placeholder={t("10 digit nomor rekening")}
+                      />
+                    </Field>
+                    <Button type="submit" variant="outline" disabled={busy}>
+                      <Search size={15} />
+                      {t("Cari rekening")}
+                    </Button>
+                  </form>
+                  <form
                     className="grid gap-5"
                     onSubmit={(e) => {
                       e.preventDefault();
-                      if (!selected) return;
+                      if (!member || busy) return;
                       if (!confirmCash) {
                         setConfirmCash(true);
                         return;
@@ -816,6 +909,10 @@ export default function Home() {
                         setCashNote("");
                         setConfirmCash(false);
                         await refresh();
+                        const updated = await api<Member>(
+                          `/members/by-account/${member.account_number}`,
+                        );
+                        setResolvedMember(updated);
                         setHistory(
                           await api<Transaction[]>(
                             `/members/${selected}/transactions`,
@@ -824,29 +921,10 @@ export default function Home() {
                       });
                     }}
                   >
-                    <Field label={t("Anggota")}>
-                      <select
-                        aria-label={t("Anggota")}
-                        required
-                        className={selectClass}
-                        value={selected || ""}
-                        onChange={(e) => {
-                          setSelected(Number(e.target.value));
-                          setConfirmCash(false);
-                        }}
-                      >
-                        <option value="">{t("Pilih anggota")}</option>
-                        {members.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.number} · {m.name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
                     {member && (
                       <div className="rounded-md bg-secondary/40 p-3 text-sm">
                         <p className="text-xs text-muted-foreground">
-                          {t("Saldo anggota")}
+                          {member.name} · {member.account_number}
                         </p>
                         <p className="mt-1 font-mono">
                           {money(member.balance)}
@@ -889,7 +967,8 @@ export default function Home() {
                             : t("penarikan")}
                         </p>
                         <p>
-                          {member?.name} · {money(Number(cashAmount))}
+                          {member?.name} · {member?.account_number} ·{" "}
+                          {money(Number(cashAmount))}
                         </p>
                         <p className="mt-2 text-xs text-muted-foreground">
                           {t(
@@ -899,7 +978,7 @@ export default function Home() {
                       </div>
                     )}
                     <Button
-                      disabled={busy || user.role !== "teller" || !selected}
+                      disabled={busy || user.role !== "teller" || !member}
                     >
                       {busy ? <Loader2 className="animate-spin" /> : null}
                       {confirmCash
@@ -923,6 +1002,7 @@ export default function Home() {
               <History rows={history} selected={!!selected} />
             </div>
           )}
+          {tab === "transactions" && <TransactionList />}
           {tab === "loans" && (
             <>
               {newLoan && user.role === "teller" && (
@@ -972,7 +1052,7 @@ export default function Home() {
                           <option value="">{t("Pilih anggota")}</option>
                           {members.map((m) => (
                             <option key={m.id} value={m.id}>
-                              {m.number} · {m.name}
+                              {m.account_number} · {m.name}
                             </option>
                           ))}
                         </select>
@@ -1295,7 +1375,9 @@ function History({
                 <p className="mt-1 text-[10px] text-muted-foreground">
                   {date(transaction.created_at)}
                 </p>
-                {transaction.note && <p className="mt-2 text-xs">{transaction.note}</p>}
+                {transaction.note && (
+                  <p className="mt-2 text-xs">{transaction.note}</p>
+                )}
                 <p className="mt-2 break-all font-mono text-[10px] text-muted-foreground">
                   {transaction.reference}
                 </p>

@@ -58,6 +58,8 @@ Add further features only when requested: richer reports, dedicated cash-session
 - [x] Implement staff access and minimal KCP setup.
 - [x] Implement registration and duplicate prevention.
 - [x] Implement cash deposits and withdrawals.
+- [x] Allocate separate savings account numbers and support exact cross-KCP lookup.
+- [x] Add a dedicated transaction menu with exact account filtering, Today/Last 7 days/Last 30 days/inclusive Custom dates in Asia/Jakarta, and 50-row pagination.
 - [x] Implement loan applications and decisions; disbursement and repayment explicitly deferred.
 - [ ] Verify core flows and prepare a controlled pilot.
 - [ ] Implement savings interest in Phase 2.

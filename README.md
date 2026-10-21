@@ -5,9 +5,10 @@ A small multi-KCP cooperative application: Go API, PostgreSQL, and Next.js with 
 ## Implemented MVP
 
 - Teller/Supervisor login with hashed passwords and database-backed HTTP-only sessions.
-- Member registration using unique 16-digit NIK, member number, and home KCP.
+- Member registration using unique 16-digit NIK, member number, home KCP, and an automatically allocated 10-digit savings account number.
 - IDR 50,000 opening cash deposit posted atomically with registration.
-- Cross-KCP cash deposits and withdrawals with balance/cash checks and transaction history.
+- Cross-KCP cash deposits and withdrawals by exact account-number lookup, with balance/cash checks and transaction history.
+- Dedicated Transactions menu with exact account-number filtering and cooperative-wide Teller/Supervisor visibility with Today, Last 7 days, Last 30 days, inclusive custom dates, and 50-row pagination (including opening deposits).
 - Loan applications, assigned responsible KCP, Supervisor decisions, and decision reasons.
 - Balanced transaction journals, actor/KCP audit records, request retry protection, and concurrent withdrawal protection.
 
@@ -79,7 +80,7 @@ No production limit has been invented or enabled. The tests use a clearly isolat
 - No minimum retained savings balance beyond zero and no fees have been added. A withdrawal also requires sufficient recorded cash at the servicing KCP.
 - Branch cash starts at zero and is funded by recorded deposits. Cash transfers, opening-cash setup, and reversal interfaces are not implemented. The app blocks insufficient branch cash rather than inventing funds.
 - The central ledger uses KCP dimensions; branch cash can be reconciled, but separate fully balanced branch books/inter-KCP clearing are not implemented.
-- Member search returns at most 100 matches; search by name, member number, or exact NIK to locate others. Select the member before opening cash/loan forms when needed. Latest history and loan lists are limited to 100; pagination is a later improvement.
+- Member search returns at most 100 matches; search by name, member number, full account number, or exact NIK to locate others. The cash form resolves a full account number directly, independent of the latest-100 member list. Select the member before opening cash/loan forms when needed. Member-specific history and loan lists are limited to 100. The dedicated Transactions menu has date filtering and pagination.
 
 These assumptions need business review before real-money use. No member identity or financial sample data is seeded.
 
@@ -109,7 +110,7 @@ docs/           Business decisions, diagrams, ADRs, and roadmap
 
 The API uses Gin. Direct Go commands are `go run ./cmd/api`, `go run ./cmd/migrate`, and `go run ./dev/cmd/seed` from `backend/`; the existing shell wrappers above remain supported.
 
-Schema setup is an explicit idempotent initial migration command, not an automatic startup migration. Add numbered migrations when the schema evolves. Frontend UI supports Indonesian/English and light/dark themes, with browser-persisted preferences on login and staff screens. Project documentation is English.
+Schema setup uses the explicit migration command with an ordered version ledger and transaction-scoped migration lock. The immutable initial schema is version 1; version 2 assigns savings account numbers to existing and future members. Run migrations before starting an updated API; see the Docker runbook for the local maintenance procedure. Frontend UI supports Indonesian/English and light/dark themes, with browser-persisted preferences on login and staff screens. Project documentation is English.
 
 Before a real pilot: approve product and accounting rules, configure approval authority, provide correction/reversal and cash-handling procedures, test backups/restores, configure HTTPS/secure cookies, and replace development identities. This build is for local review, not a production rollout.
 

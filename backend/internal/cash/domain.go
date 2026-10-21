@@ -31,3 +31,13 @@ type Branch struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
 }
+
+// ListedTransaction adds member attribution to the cooperative-wide staff feed.
+// Member-specific history retains its original response contract.
+type ListedTransaction struct {
+	Transaction
+	MemberID      int64  `json:"member_id"`
+	MemberNumber  string `json:"member_number"`
+	MemberName    string `json:"member_name"`
+	AccountNumber string `json:"account_number"`
+}
