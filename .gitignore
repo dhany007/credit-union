@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+backend/bin/
+*.log
+coverage/
+playwright-report/
+test-results/
+frontend/tsconfig.tsbuildinfo
+
+.local/

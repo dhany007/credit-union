@@ -1,6 +1,6 @@
 # Acceptance Scenarios
 
-> Phase 1 applies the scenarios relevant to registration, cash service, permissions, and basic lending. Savings-interest scenarios AC-021 through AC-032 are Phase 2 acceptance criteria. Repayment scenarios apply if basic repayments are included; otherwise a reconciled servicing procedure is required before live lending. See [scope](scope.md).
+> Phase 1 applies the scenarios relevant to registration, cash service, permissions, and basic lending. Savings-interest scenarios AC-021 through AC-032 are Phase 2 acceptance criteria. Loan disbursement/repayment scenarios are deferred; Phase 1 loan approval changes workflow status only. See [scope](scope.md).
 
 
 These scenarios become implementation tests after the associated proposed policies are approved. Confirmed business scenarios may be refined without weakening the agreed rules.

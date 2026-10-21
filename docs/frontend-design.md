@@ -17,4 +17,4 @@ Theme ID: `cmlm03etv000204lh15608kec`.
 
 ## Verification at implementation time
 
-The linked page identifies the theme as Zen Inspired Theme. Exact CSS token values and font assets have not yet been exported or committed; no frontend application exists yet. Capture the exported theme locally during frontend setup so future upstream edits do not silently alter the application. Verify the implemented screens against the theme preview and check responsive forms and tables.
+The linked page identifies the theme as Zen Inspired Theme. The exact light/dark theme tokens are now captured in `frontend/theme/zen-inspired.json` and applied in `frontend/app/globals.css`; fonts are bundled via Fontsource packages. The frontend has been implemented for local review. Verify the implemented screens against the theme preview and check responsive forms and tables.

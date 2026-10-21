@@ -55,13 +55,16 @@ Add further features only when requested: richer reports, dedicated cash-session
 ## Progress
 
 - [x] Record the simplified four-service MVP and defer advanced features.
-- [ ] Implement staff access and minimal KCP setup.
-- [ ] Implement registration and duplicate prevention.
-- [ ] Implement cash deposits and withdrawals.
-- [ ] Implement basic lending and settle repayment scope before live use.
+- [x] Implement staff access and minimal KCP setup.
+- [x] Implement registration and duplicate prevention.
+- [x] Implement cash deposits and withdrawals.
+- [x] Implement loan applications and decisions; disbursement and repayment explicitly deferred.
 - [ ] Verify core flows and prepare a controlled pilot.
 - [ ] Implement savings interest in Phase 2.
 
 ## Phase 1 lending clarification (2026-10-21)
 
 The project owner explicitly selected loan application and approval only. Disbursement, repayment scheduling, and repayments are deferred until lending rules are agreed. Approval is a workflow decision and does not create loan principal, move cash, or imply disbursement eligibility. Earlier references to a live lending pilot apply only when disbursement is later introduced.
+## Local implementation status
+
+See [implementation notes](implementation.md) for completed code, verification, and assumptions. Approval is disabled by default until an explicit limit is configured. Pilot readiness remains incomplete; the documentation checkbox is not production sign-off.
