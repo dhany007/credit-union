@@ -11,3 +11,4 @@ test-results/
 frontend/tsconfig.tsbuildinfo
 
 .local/
+!.env.docker.example

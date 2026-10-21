@@ -13,6 +13,19 @@ A small multi-KCP cooperative application: Go API, PostgreSQL, and Next.js with 
 
 No disbursement, repayment, automatic savings interest, or member portal is enabled. Loan approval does not move cash or create outstanding principal.
 
+## Local Docker setup
+
+See the [local Docker runbook](docs/deployment/docker-local.md) for configuration, backups, and troubleshooting. Docker uses its own PostgreSQL volume and a separate ignored `.env.docker`; the existing WSL database and `.env` remain separate.
+
+On a fresh checkout only, copy `.env.docker.example` to `.env.docker` and set unique passwords. Keep the existing file if already configured. Then run from the project root:
+
+```bash
+docker compose --env-file .env.docker up --build -d --wait
+docker compose --env-file .env.docker run --rm seed
+```
+
+Open **http://localhost:3000**. Sign in with a development username below and the `DEV_SEED_PASSWORD` from `.env.docker`. Only the frontend port is published, bound to localhost. Seed is explicit and does not run on normal startup.
+
 ## Local WSL setup
 
 Requirements: PostgreSQL, Node 24+, npm, and Go 1.26+ (the Go module can download its matching toolchain). Commands run from this project root.
@@ -96,7 +109,7 @@ docs/           Business decisions, diagrams, ADRs, and roadmap
 
 The API uses Gin. Direct Go commands are `go run ./cmd/api`, `go run ./cmd/migrate`, and `go run ./dev/cmd/seed` from `backend/`; the existing shell wrappers above remain supported.
 
-Schema setup is an explicit idempotent initial migration command, not an automatic startup migration. Add numbered migrations when the schema evolves. Frontend UI is Indonesian; project documentation is English.
+Schema setup is an explicit idempotent initial migration command, not an automatic startup migration. Add numbered migrations when the schema evolves. Frontend UI supports Indonesian/English and light/dark themes, with browser-persisted preferences on login and staff screens. Project documentation is English.
 
 Before a real pilot: approve product and accounting rules, configure approval authority, provide correction/reversal and cash-handling procedures, test backups/restores, configure HTTPS/secure cookies, and replace development identities. This build is for local review, not a production rollout.
 
@@ -115,3 +128,5 @@ bash scripts/lint.sh
 ```
 
 Configuration is at `backend/.golangci.yml`. The skill-derived correctness/security/readability linters remain enabled for production and test code, with 120-character lines and shared formatting commands. Narrow annotations explain synthetic credential fixtures and environment-controlled local HTTP cookies.
+
+GitHub Actions runs the same pinned linter and formatting checks on every push and pull request through [.github/workflows/lint.yml](.github/workflows/lint.yml). The workflow can also be started manually and does not require a database or application secrets.

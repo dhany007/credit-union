@@ -1,0 +1,7 @@
+.git
+.env*
+.local
+bin
+coverage
+*.log
+Dockerfile

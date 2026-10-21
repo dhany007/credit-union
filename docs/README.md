@@ -43,3 +43,5 @@ Begin the small implementation steps in the [roadmap](roadmap.md). Resolve only 
 
 - [Gin/domain backend tech plan](tech-plan-phase-1-backend.md)
 - [TDD and validation evidence](testing/gin-refactor.tdd.md)
+
+- [Local Docker deployment runbook](deployment/docker-local.md)

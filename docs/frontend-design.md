@@ -18,3 +18,17 @@ Theme ID: `cmlm03etv000204lh15608kec`.
 ## Verification at implementation time
 
 The linked page identifies the theme as Zen Inspired Theme. The exact light/dark theme tokens are now captured in `frontend/theme/zen-inspired.json` and applied in `frontend/app/globals.css`; fonts are bundled via Fontsource packages. The frontend has been implemented for local review. Verify the implemented screens against the theme preview and check responsive forms and tables.
+
+## Language and appearance preferences
+
+Confirmed requirement: Phase 1 supports Bahasa Indonesia (`id`) and English (`en`), with light and dark modes using the existing exact Zen Inspired tokens.
+
+- Language and theme controls are available before sign-in and in the staff header. They remain keyboard accessible and expose their names/current state to assistive technology.
+- Bahasa Indonesia is the initial language. The initial theme follows the browser's system preference until the user explicitly selects light or dark.
+- Preferences are stored per browser in `credit-union.locale` and `credit-union.theme`. They persist across reloads and sign-out, and synchronize between tabs. If browser storage is unavailable, controls still work for the current page.
+- `frontend/lib/messages.ts` contains typed messages and interpolation for labels, empty states, statuses, and success notices. `frontend/lib/api-errors.ts` adapts known public API errors without changing the backend contract.
+- Date and currency formatting follows the selected locale; currency remains IDR and financial payloads remain whole rupiah. Member names, KCP names, notes, and other entered data are not translated.
+- Changing language does not reset a draft form or submit a financial operation. Existing feedback is rendered in the newly selected language.
+- The document language is updated for screen readers. A trusted pre-paint script applies the saved/system theme, with hydration suppression limited to the root attributes that it changes.
+
+Implementation uses React context and the existing CSS tokens; no additional runtime i18n/theme dependency or localized URL routing is introduced. See [frontend preference verification](testing/frontend-preferences.md).
