@@ -89,3 +89,20 @@ See [transaction-history tech plan](tech-plan-transaction-history.md) and [TDD e
 Send `cursor` for the next page together with `period=custom` and the response dates, freezing the range across midnight. `next_cursor` is an empty string on the last page. Cursors are bounded/versioned URL-safe base64 positions bound to account/date scope; malformed or mismatched values return 400. They do not grant access. Every page enforces staff authorization. This is a live listing, not a snapshot/export; refresh to see newer postings. Existing `/api/transactions` retains its original latest-100 array contract; member-specific history is unchanged. No schema changes or new dependencies.
 
 See [date-filter plan](tech-plan-transaction-date-filters.md) and [TDD evidence](testing/transaction-date-filters.tdd.md).
+
+## Member balance ledger snapshots
+
+Cash transactions now include balance_before and balance_after, captured from the actual member UPDATE under the row lock and committed atomically with journal lines/audit/replay data. This includes the registration opening deposit. All three cash-history endpoints return these additive integer IDR fields; historic unrecorded values are explicit null. Existing filters, pagination, ordering, authorization and mutation contracts remain unchanged.
+
+```mermaid
+flowchart LR
+    Cash[Registration deposit or cash posting] --> Lock[Lock member and KCP]
+    Lock --> Validate[Validate balance and cash]
+    Validate --> Update[Update balance and return before / after]
+    Update --> Record[Store cash movement with snapshots]
+    Record --> Journal[Write balanced journal and audit]
+    Journal --> Commit[Commit with retry result]
+    Commit --> History[Display member balance before / after]
+```
+
+The Transactions table and member cash history show before/after balances. Zero is formatted as currency; a dash means an older snapshot was not recorded. The snapshots are member savings balances. journal_lines remains the double-entry journal. Migration3 performs no monetary backfill or timestamp-based reconstruction. See ADR-0011 and the member-balance-ledger tech plan/evidence.

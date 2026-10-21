@@ -58,3 +58,9 @@ Begin the small implementation steps in the [roadmap](roadmap.md). Resolve only 
 - [CI quality tech plan](tech-plan-ci-quality.md)
 - [Quality checks and coverage](testing/quality-checks.md)
 - [CI quality validation evidence](testing/ci-quality.tdd.md)
+
+- [Member balance ledger tech plan](tech-plan-member-balance-ledger.md)
+- [Member balance ledger TDD evidence](testing/member-balance-ledger.tdd.md)
+
+- [Reconciled local demo data](development/demo-data.md)
+- [Demo data tech plan](tech-plan-demo-data.md)

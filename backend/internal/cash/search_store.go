@@ -14,7 +14,8 @@ func (s *PostgresStore) Search(ctx context.Context, f searchFilter) ([]ListedTra
 		beforeRef = f.Before.Reference
 	}
 	rows, err := s.pool.Query(ctx, `
- SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,u.name,m.id,m.name,m.account_number
+ SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,u.name,t.balance_before,t.balance_after,
+ m.id,m.name,m.account_number
  FROM transactions t
  JOIN members m ON m.id=t.member_id
  JOIN branches b ON b.id=t.branch_id
@@ -31,8 +32,20 @@ func (s *PostgresStore) Search(ctx context.Context, f searchFilter) ([]ListedTra
 	out := []ListedTransaction{}
 	for rows.Next() {
 		var item ListedTransaction
-		if err = rows.Scan(&item.Reference, &item.Kind, &item.Amount, &item.Note, &item.CreatedAt,
-			&item.Branch, &item.Actor, &item.MemberID, &item.MemberName, &item.AccountNumber); err != nil {
+		if err = rows.Scan(
+			&item.Reference,
+			&item.Kind,
+			&item.Amount,
+			&item.Note,
+			&item.CreatedAt,
+			&item.Branch,
+			&item.Actor,
+			&item.BalanceBefore,
+			&item.BalanceAfter,
+			&item.MemberID,
+			&item.MemberName,
+			&item.AccountNumber,
+		); err != nil {
 			return nil, err
 		}
 		item.MemberNumber = fmt.Sprintf("CU-%06d", item.MemberID)

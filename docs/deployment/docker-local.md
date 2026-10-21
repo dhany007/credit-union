@@ -135,3 +135,13 @@ docker compose --env-file .env.docker up -d --no-build --wait
 The migration acquires a transaction-scoped schema-specific advisory lock with a five-second lock timeout, adds the account column/sequence, assigns numbers to existing members, and records version 2 in the same transaction. A lock or migration failure leaves the ledger/schema changes uncommitted; inspect migration logs and resolve the cause before retrying. Keep the database volume. Repeated migration runs retain issued numbers.
 
 Validate member counts, total savings, transaction counts, and journal counts against the pre-upgrade values. Each member must have one distinct non-null 10-digit account number. Existing stored registration replay JSON is intentionally not rewritten; current member lookup supplies its account number. For a large or live production database, plan a phased backfill separately.
+
+### Member balance snapshot migration
+
+Migration 3 adds nullable before/after balance snapshots and consistency constraints. Pause all writers, take a database backup, run the existing migration service, and deploy the updated API/web. Existing transactions keep unknown snapshots; balances and journals are not rewritten. Old API binaries can still insert unknown snapshots, so finish the writer rollout before resuming. Retain the added schema and captured values if rolling back the application; use forward fixes.
+
+## Make shortcuts
+
+From a Bash environment with GNU Make and Docker Compose, use `make up` for build/start/migrations and `make seed` for optional staff plus 15-member demo data. Configure `.env.docker` first. Seed creates a private backup and restores service availability after success or failure; it refuses unrelated existing financial data. See [demo data](../development/demo-data.md).
+
+Use `make release VERSION=v0.1.0` only after intended changes are merged into remote `main`. GitHub CLI authentication and repository write access are required. This publishes a new tag and GitHub Release with generated notes at the resolved remote main SHA; it does not deploy Docker services. Existing tags are refused.

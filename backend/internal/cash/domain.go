@@ -17,13 +17,15 @@ type Result struct {
 
 // Transaction is the staff-facing cash history projection.
 type Transaction struct {
-	Reference string    `json:"reference"`
-	Kind      string    `json:"kind"`
-	Amount    int64     `json:"amount"`
-	Note      string    `json:"note"`
-	CreatedAt time.Time `json:"created_at"`
-	Branch    string    `json:"branch"`
-	Actor     string    `json:"actor"`
+	BalanceBefore *int64    `json:"balance_before"`
+	BalanceAfter  *int64    `json:"balance_after"`
+	Reference     string    `json:"reference"`
+	Kind          string    `json:"kind"`
+	Amount        int64     `json:"amount"`
+	Note          string    `json:"note"`
+	CreatedAt     time.Time `json:"created_at"`
+	Branch        string    `json:"branch"`
+	Actor         string    `json:"actor"`
 }
 
 // Branch identifies a configured cooperative service location.
@@ -33,7 +35,7 @@ type Branch struct {
 }
 
 // ListedTransaction adds member attribution to the cooperative-wide staff feed.
-// Member-specific history retains its original response contract.
+// Snapshot fields are shared with the member-specific history projection.
 type ListedTransaction struct {
 	Transaction
 	MemberID      int64  `json:"member_id"`

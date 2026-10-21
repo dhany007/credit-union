@@ -55,12 +55,17 @@ func (s *PostgresStore) Post(ctx context.Context, tx pgx.Tx, memberID, actorID i
 		delta = -amount
 		debit, credit = credit, debit
 	}
-	if _, err := tx.Exec(ctx, `UPDATE members SET balance=balance+$1 WHERE id=$2`, delta, memberID); err != nil {
+	var before, after int64
+	if err := tx.QueryRow(ctx, `UPDATE members SET balance=balance+$1 WHERE id=$2
+ RETURNING balance-$1,balance`, delta, memberID).Scan(&before, &after); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `
- INSERT INTO transactions(id,member_id,branch_id,actor_id,kind,amount,note)
- VALUES($1,$2,$3,$4,$5,$6,$7)`, reference, memberID, branchID, actorID, kind, amount, note); err != nil {
+	if _, err := tx.Exec(
+		ctx, `
+ INSERT INTO transactions(id,member_id,branch_id,actor_id,kind,amount,note,balance_before,balance_after)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+		reference, memberID, branchID, actorID, kind, amount, note, before, after,
+	); err != nil {
 		return err
 	}
 	_, err := tx.Exec(ctx, `
@@ -75,7 +80,7 @@ func (s *PostgresStore) Post(ctx context.Context, tx pgx.Tx, memberID, actorID i
 // History lists the latest transactions for a member.
 func (s *PostgresStore) History(ctx context.Context, id int64) ([]Transaction, error) {
 	rows, err := s.pool.Query(ctx, `
- SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,u.name
+ SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,u.name,t.balance_before,t.balance_after
  FROM transactions t JOIN branches b ON b.id=t.branch_id JOIN users u ON u.id=t.actor_id
  WHERE member_id=$1 ORDER BY t.created_at DESC LIMIT 100`, id)
 	if err != nil {
@@ -85,8 +90,17 @@ func (s *PostgresStore) History(ctx context.Context, id int64) ([]Transaction, e
 	out := []Transaction{}
 	for rows.Next() {
 		var item Transaction
-		if err = rows.Scan(&item.Reference, &item.Kind, &item.Amount,
-			&item.Note, &item.CreatedAt, &item.Branch, &item.Actor); err != nil {
+		if err = rows.Scan(
+			&item.Reference,
+			&item.Kind,
+			&item.Amount,
+			&item.Note,
+			&item.CreatedAt,
+			&item.Branch,
+			&item.Actor,
+			&item.BalanceBefore,
+			&item.BalanceAfter,
+		); err != nil {
 			return nil, err
 		}
 		out = append(out, item)
@@ -115,7 +129,7 @@ func (s *PostgresStore) Branches(ctx context.Context) ([]Branch, error) {
 // List returns the latest 100 rows in a deterministic order. Filter values stay parameterized.
 func (s *PostgresStore) List(ctx context.Context, accountNumber string) ([]ListedTransaction, error) {
 	query := `
-        SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,u.name,
+        SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,u.name,t.balance_before,t.balance_after,
             m.id,m.name,m.account_number
         FROM transactions t
         JOIN members m ON m.id=t.member_id
@@ -136,8 +150,20 @@ func (s *PostgresStore) List(ctx context.Context, accountNumber string) ([]Liste
 	out := []ListedTransaction{}
 	for rows.Next() {
 		var item ListedTransaction
-		if err = rows.Scan(&item.Reference, &item.Kind, &item.Amount, &item.Note, &item.CreatedAt,
-			&item.Branch, &item.Actor, &item.MemberID, &item.MemberName, &item.AccountNumber); err != nil {
+		if err = rows.Scan(
+			&item.Reference,
+			&item.Kind,
+			&item.Amount,
+			&item.Note,
+			&item.CreatedAt,
+			&item.Branch,
+			&item.Actor,
+			&item.BalanceBefore,
+			&item.BalanceAfter,
+			&item.MemberID,
+			&item.MemberName,
+			&item.AccountNumber,
+		); err != nil {
 			return nil, err
 		}
 		item.MemberNumber = fmt.Sprintf("CU-%06d", item.MemberID)

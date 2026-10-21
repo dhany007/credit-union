@@ -1,4 +1,8 @@
 export const messages = {
+  "Saldo sebelum": "Balance before",
+  "Saldo sesudah": "Balance after",
+  "Saldo historis tidak tersedia": "Historical balance snapshot unavailable",
+  "Saldo sebelum dan sesudah adalah saldo simpanan anggota. Tanda — berarti snapshot historis tidak tersedia.": "Before and after balances are member savings balances. A dash (—) means the historical snapshot is unavailable.",
   "Tanggal akhir harus sama atau setelah tanggal mulai.": "End date must be on or after start date.",
   Periode: "Period",
   "Hari ini": "Today",

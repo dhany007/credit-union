@@ -2,7 +2,22 @@ name: Go lint
 
 on:
   push:
+    branches: ['**']
+    paths:
+      - 'backend/**'
+      - 'scripts/lint.sh'
+      - '.github/workflows/lint.yml'
+      - 'Makefile'
+      - 'compose.yml'
+      - '.env.docker.example'
   pull_request:
+    paths:
+      - 'backend/**'
+      - 'scripts/lint.sh'
+      - '.github/workflows/lint.yml'
+      - 'Makefile'
+      - 'compose.yml'
+      - '.env.docker.example'
   workflow_dispatch:
 
 permissions:

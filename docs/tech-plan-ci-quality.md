@@ -22,3 +22,7 @@ Test service is disposable with synthetic credentials, never a real environment.
 
 ## Open questions and handoff
 None blocking. Apply coding-standard, go-lint-workflow, react-testing, react-patterns, typescript-patterns, frontend-build-resolver and env-config-management as relevant. Preserve existing financial tests, runtime dependencies and main PR rules. Record actual validation; do not claim CI status before a remote run.
+
+## Path routing update
+
+CI now runs only for the affected stack using native workflow path filters. Backend lint/tests and frontend checks are separate workflows; shared Makefile/Compose/environment example changes run both stacks, documentation-only changes run neither, and manual dispatch remains available. Job bodies and stable check names are preserved. See [quality checks](testing/quality-checks.md#changed-path-routing) for the mapping and required-check semantics.

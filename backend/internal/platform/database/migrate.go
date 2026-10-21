@@ -11,9 +11,13 @@ import (
 //go:embed migrations/0002_savings_account_number.sql
 var accountNumberMigration string
 
+//go:embed migrations/0003_member_balance_snapshots.sql
+var balanceSnapshotMigration string
+
 const (
-	initialSchemaVersion = 1
-	accountNumberVersion = 2
+	initialSchemaVersion   = 1
+	accountNumberVersion   = 2
+	balanceSnapshotVersion = 3
 )
 
 // Migrate applies ordered migrations atomically, including the existing initial schema.
@@ -46,6 +50,7 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	}{
 		{initialSchemaVersion, Schema},
 		{accountNumberVersion, accountNumberMigration},
+		{balanceSnapshotVersion, balanceSnapshotMigration},
 	}
 	for _, migration := range migrations {
 		var applied bool
