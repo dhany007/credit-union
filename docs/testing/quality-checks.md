@@ -8,9 +8,26 @@
 | Backend tests | Go vet and uncached race-enabled unit/PostgreSQL integration tests |
 | Frontend lint and tests | ESLint Next/Core Web Vitals + TypeScript rules, TypeScript checking, native Node unit tests, production build |
 
-Both workflow files run for every push, pull request, and manual dispatch. There are no path filters that could leave a required check unreported. Permissions are read-only contents; checkout does not persist credentials. Jobs have finite timeouts and cancel obsolete runs for the same ref. The existing Go lint check name is preserved.
+Three workflows use native GitHub Actions path filters on branch pushes and pull requests. Backend changes trigger Go lint and backend tests; frontend changes trigger frontend checks. Changes to both stacks trigger both sets. Documentation-only changes trigger neither. Manual dispatch runs the selected workflow regardless of paths. Tag pushes do not run these branch checks. Permissions are read-only contents; checkout does not persist credentials. Jobs have finite timeouts and cancel obsolete runs for the same ref. The existing Go lint check name is preserved.
 
 The backend job owns a disposable PostgreSQL 16 service with a runner-local synthetic password and explicit TEST_DATABASE_URL. Existing test fixtures create/drop isolated schemas. Integration tests must run, not silently skip because the database variable is absent. No repository secrets, application database, or Docker local database are used.
+
+
+### Changed-path routing
+
+| Changed path | Checks |
+| --- | --- |
+| `backend/**` | Go lint and formatting; Backend tests |
+| `frontend/**` | Frontend lint and tests |
+| `scripts/lint.sh` | Go lint and formatting |
+| `scripts/test.sh`, `scripts/backend.sh`, `scripts/seed-demo.sh` | Backend tests |
+| `Makefile`, `compose.yml`, `.env.docker.example` | All three checks (shared local setup) |
+| A workflow file | That workflow's checks |
+| Documentation only | None |
+
+Backend tests remain in `.github/workflows/quality.yml`; frontend checks move to `.github/workflows/frontend.yml`. Existing job/check names are preserved. Pull request filtering uses the complete PR diff; a mixed-stack PR continues running both stacks even if its latest commit touches only one stack. Workflow filters follow the [GitHub Actions path-filter documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushpull_requestpull_request_targetpathspaths-ignore).
+
+Path-filtered workflows do not report checks for unaffected stacks. Do not configure all three contexts as unconditional required checks for every PR; that would leave skipped workflows pending. Existing repository protection is unchanged by this workflow change.
 
 ## Local commands
 

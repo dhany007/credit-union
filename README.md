@@ -153,8 +153,8 @@ bash scripts/lint.sh
 
 Configuration is at `backend/.golangci.yml`. The skill-derived correctness/security/readability linters remain enabled for production and test code, with 120-character lines and shared formatting commands. Narrow annotations explain synthetic credential fixtures and environment-controlled local HTTP cookies.
 
-GitHub Actions runs the same pinned linter and formatting checks on every push and pull request through [.github/workflows/lint.yml](.github/workflows/lint.yml). The workflow can also be started manually and does not require a database or application secrets.
+GitHub Actions runs the same pinned linter and formatting checks for relevant backend changes on branch pushes and pull requests through [.github/workflows/lint.yml](.github/workflows/lint.yml). The workflow can also be started manually and does not require a database or application secrets.
 
 ## Automated quality checks
 
-GitHub Actions runs Go lint/formatting, backend vet and race-enabled PostgreSQL tests, and frontend ESLint/typecheck/unit tests/production build on pushes and PRs. Frontend local commands are npm run lint, npm run typecheck, npm test, and npm run build from frontend/ using Node24. See [quality checks and coverage](docs/testing/quality-checks.md) for database isolation, limits, and required-check activation.
+GitHub Actions runs Go lint/formatting and backend vet/race-enabled PostgreSQL tests for backend changes, and frontend ESLint/typecheck/unit tests/production build for frontend changes. Shared Makefile/Compose configuration changes run both stacks; documentation-only changes skip these checks. Frontend local commands are npm run lint, npm run typecheck, npm test, and npm run build from frontend/ using Node24. See [quality checks and coverage](docs/testing/quality-checks.md) for database isolation, limits, and required-check activation.
