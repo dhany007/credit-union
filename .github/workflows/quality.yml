@@ -1,0 +1,85 @@
+name: Quality checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-tests:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GIN_MODE: test
+      # Disposable runner-local database; never an application credential or database.
+      TEST_DATABASE_URL: postgres://credit_union_test:ci-only-test-password@127.0.0.1:5432/credit_union_test?sslmode=disable
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: credit_union_test
+          POSTGRES_PASSWORD: ci-only-test-password
+          POSTGRES_DB: credit_union_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U credit_union_test -d credit_union_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Check Go code
+        run: go vet ./...
+      - name: Run unit and PostgreSQL integration tests with race detection
+        run: |
+          test -n "$TEST_DATABASE_URL"
+          go test -race -count=1 -timeout=10m -v ./...
+
+  frontend-quality:
+    name: Frontend lint and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Lint frontend
+        run: npm run lint
+      - name: Check TypeScript
+        run: npm run typecheck
+      - name: Run frontend unit tests
+        run: npm test
+      - name: Build production frontend
+        run: npm run build

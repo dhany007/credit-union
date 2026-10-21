@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -77,6 +78,14 @@ type Transaction = {
   branch: string;
   actor: string;
 };
+function loadWorkspace(searchQuery: string, signal?: AbortSignal) {
+  return Promise.all([
+    api<Member[]>(`/members?search=${encodeURIComponent(searchQuery)}`, { signal }),
+    api<Loan[]>("/loans", { signal }),
+    api<Meta>("/meta", { signal }),
+  ]);
+}
+
 function Field({
   label,
   children,
@@ -111,7 +120,14 @@ export default function Home() {
     [loans, setLoans] = useState<Loan[]>([]),
     [meta, setMeta] = useState<Meta | null>(null);
   const [selected, setSelected] = useState<number | null>(null),
-    [history, setHistory] = useState<Transaction[]>([]);
+    [historyResult, setHistoryResult] = useState<{
+      memberID: number | null;
+      actorID: number;
+      rows: Transaction[];
+    } | null>(null);
+  const history = historyResult?.memberID === selected && historyResult?.actorID === user?.id
+    ? historyResult.rows
+    : [];
   const [search, setSearch] = useState(""),
     [query, setQuery] = useState(""),
     [newMember, setNewMember] = useState(false);
@@ -137,11 +153,7 @@ export default function Home() {
     members.find((m) => m.id === selected) ??
     (resolvedMember?.id === selected ? resolvedMember : undefined);
   async function refresh(searchQuery = query) {
-    const [ms, ls, mt] = await Promise.all([
-      api<Member[]>(`/members?search=${encodeURIComponent(searchQuery)}`),
-      api<Loan[]>("/loans"),
-      api<Meta>("/meta"),
-    ]);
+    const [ms, ls, mt] = await loadWorkspace(searchQuery);
     setMembers(ms);
     setLoans(ls);
     setMeta(mt);
@@ -154,22 +166,34 @@ export default function Home() {
       .finally(() => setBoot(false));
   }, []);
   useEffect(() => {
-    if (user) refresh().catch((e) => setError(e.message));
-  }, [user, query]); // Re-fetch after user or submitted search changes.
+    if (!user) return;
+    const controller = new AbortController();
+    loadWorkspace(query, controller.signal)
+      .then(([ms, ls, mt]) => {
+        if (controller.signal.aborted) return;
+        setMembers(ms);
+        setLoans(ls);
+        setMeta(mt);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted)
+          setError(error instanceof Error ? error.message : "Unexpected error");
+      });
+    return () => controller.abort();
+  }, [user, query]);
   useEffect(() => {
-    let active = true;
-    setHistory([]);
-    if (user && selected)
-      api<Transaction[]>(`/members/${selected}/transactions`)
-        .then((rows) => {
-          if (active) setHistory(rows);
-        })
-        .catch((e) => {
-          if (active) setError(e.message);
-        });
-    return () => {
-      active = false;
-    };
+    if (!user || !selected) return;
+    const controller = new AbortController();
+    api<Transaction[]>(`/members/${selected}/transactions`, { signal: controller.signal })
+      .then((rows) => {
+        if (!controller.signal.aborted)
+          setHistoryResult({ memberID: selected, actorID: user.id, rows });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted)
+          setError(error instanceof Error ? error.message : "Unexpected error");
+      });
+    return () => controller.abort();
   }, [user, selected]);
   async function run(fn: () => Promise<void>) {
     setBusy(true);
@@ -332,7 +356,7 @@ export default function Home() {
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
       <aside className="no-print flex flex-col border-b bg-[var(--sidebar)] p-5 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:p-6">
-        <a href="/" className="mb-8 flex items-center gap-3 font-semibold">
+        <Link href="/" className="mb-8 flex items-center gap-3 font-semibold">
           <span className="grid h-10 w-10 place-items-center rounded-lg bg-primary text-primary-foreground">
             <Landmark size={20} />
           </span>
@@ -342,7 +366,7 @@ export default function Home() {
               {t("Ruang kerja KCP")}
             </span>
           </span>
-        </a>
+        </Link>
         <p className="mb-3 hidden text-[10px] uppercase tracking-[.2em] text-muted-foreground lg:block">
           {t("Layanan utama")}
         </p>
@@ -416,7 +440,7 @@ export default function Home() {
                   accountLookupVersion.current++;
                   setMembers([]);
                   setSelected(null);
-                  setHistory([]);
+                  setHistoryResult(null);
                   setLoans([]);
                   setMeta(null);
                   setError("");
@@ -913,11 +937,11 @@ export default function Home() {
                           `/members/by-account/${member.account_number}`,
                         );
                         setResolvedMember(updated);
-                        setHistory(
-                          await api<Transaction[]>(
-                            `/members/${selected}/transactions`,
-                          ),
-                        );
+                        setHistoryResult({
+                          memberID: selected,
+                          actorID: user.id,
+                          rows: await api<Transaction[]>(`/members/${selected}/transactions`),
+                        });
                       });
                     }}
                   >

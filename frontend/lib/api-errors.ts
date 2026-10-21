@@ -57,7 +57,7 @@ const errors: Record<string, string> = {
 
 // Keep public API messages unchanged; unknown failures receive a safe localized fallback.
 export function localizedError(locale: Locale, message: string) {
-  if (errors[message]) return locale === "id" ? errors[message] : message;
+  if (Object.hasOwn(errors, message)) return locale === "id" ? errors[message] : message;
   return locale === "id"
     ? "Terjadi kesalahan. Silakan coba lagi."
     : "Something went wrong. Please try again.";

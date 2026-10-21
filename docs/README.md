@@ -54,3 +54,7 @@ Begin the small implementation steps in the [roadmap](roadmap.md). Resolve only 
 
 - [Transaction date filters tech plan](tech-plan-transaction-date-filters.md)
 - [Transaction date filters TDD evidence](testing/transaction-date-filters.tdd.md)
+
+- [CI quality tech plan](tech-plan-ci-quality.md)
+- [Quality checks and coverage](testing/quality-checks.md)
+- [CI quality validation evidence](testing/ci-quality.tdd.md)

@@ -62,6 +62,8 @@ export function PreferencesProvider({
         : window.matchMedia("(prefers-color-scheme: dark)").matches
           ? "dark"
           : "light";
+    // Hydrate browser-only storage after SSR so the first client render stays consistent.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     updateLocale(initialLocale);
     updateTheme(initialTheme);
     document.documentElement.lang = initialLocale;
