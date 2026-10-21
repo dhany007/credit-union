@@ -1,0 +1,46 @@
+name: Go lint
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-lint-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Go lint and formatting
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Install pinned linter
+        env:
+          GOBIN: ${{ github.workspace }}/.local/bin
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
+
+      - name: Validate lint configuration
+        run: bash scripts/lint.sh config verify
+
+      - name: Check Go formatting
+        run: |
+          bash scripts/lint.sh fmt
+          git diff --exit-code -- backend
+
+      - name: Run Go linters
+        run: bash scripts/lint.sh

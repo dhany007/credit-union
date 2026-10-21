@@ -4,7 +4,7 @@
 
 - One cooperative operates multiple KCPs.
 - A person may have only one membership across the cooperative and may not register again at another KCP.
-- Each member has one home KCP.
+- Each member has one home KCP and one Phase 1 savings account with its own cooperative-wide account number.
 - Deposits, withdrawals, loan applications, and installment payments are available at every KCP, subject to the applicable product rules and staff authority.
 - Each loan application has one responsible KCP for file management and loan monitoring.
 - Loan approval follows an authority matrix based on amount, product, and risk.
@@ -20,6 +20,7 @@
 | --- | --- |
 | Cooperative | The single organization operating this system |
 | KCP | A service branch within the cooperative; not a separate cooperative |
+| Savings account number | A unique savings identifier assigned at registration and usable at every KCP; separate from membership number and NIK |
 | Home KCP | The KCP associated with a member's registration |
 | Servicing KCP | The KCP processing a particular transaction |
 | Receiving KCP | The KCP receiving a loan application |

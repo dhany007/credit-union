@@ -1,6 +1,6 @@
 # Acceptance Scenarios
 
-> Phase 1 applies the scenarios relevant to registration, cash service, permissions, and basic lending. Savings-interest scenarios AC-021 through AC-032 are Phase 2 acceptance criteria. Repayment scenarios apply if basic repayments are included; otherwise a reconciled servicing procedure is required before live lending. See [scope](scope.md).
+> Phase 1 applies the scenarios relevant to registration, cash service, permissions, and basic lending. Savings-interest scenarios AC-021 through AC-032 are Phase 2 acceptance criteria. Loan disbursement/repayment scenarios are deferred; Phase 1 loan approval changes workflow status only. See [scope](scope.md).
 
 
 These scenarios become implementation tests after the associated proposed policies are approved. Confirmed business scenarios may be refined without weakening the agreed rules.
@@ -48,3 +48,14 @@ The following use the illustrative rate bands in [Savings interest policy](savin
 | AC-032 | Monthly interest is credited | Savings liability increases without a teller cash movement; accounting reconciliation holds | Accounting proposal |
 
 Additional worked examples are required for rounding, interest, fees, partial and early repayments, late payments, reversals after subsequent activity, branch balancing, and period closing. Expected values must come from approved business and accounting policies.
+
+## Dedicated transaction history
+
+- An authenticated Teller or Supervisor can inspect cash postings across KCPs, including registration deposits.
+- Filtering by a complete account number returns only that account's postings; resetting shows all accounts again.
+- Names, membership/account numbers, servicing KCP/staff, direction, integer IDR amount, timestamp, reference, and note match the posted transaction.
+- Invalid/partial account filters are rejected; a valid unknown account displays an empty result rather than another account's rows.
+- Default Today, Last 7 days, Last 30 days, and inclusive Custom dates use Asia/Jakarta. Date and account filters combine. Reversed or invalid custom dates are rejected.
+- Results use 50-row pages, ordered timestamp/reference descending. Previous/Next navigate all matching history, with no latest-100 ceiling. Applying/resetting a filter starts page one; Reset restores Today/all accounts.
+- Loading a different filter or encountering an error cannot display previous rows as the new result; retry and reset remain available.
+- Anonymous access is denied, identity/contact fields are not included, and history reads do not change balances, journals, or retry outcomes.

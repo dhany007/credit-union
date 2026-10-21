@@ -40,3 +40,7 @@ No numeric approval limits or risk classifications have been agreed. Do not seed
 Supervisor manages savings-interest configuration; Teller and Member roles do not receive this permission by default. Rates are annual and apply to savings balances, independently of loan approval authority. See [Savings interest policy](savings-interest.md).
 
 Proposed controls: explicit configuration permission, version history, effective dates, and audit reasons. The KCP/product scope of configuration rights and any second-person approval requirement remain open. No role may directly rewrite historical daily accruals or posted credits through a normal rate edit.
+
+## Implemented Phase 1 transaction history
+
+Teller and Supervisor may read cash transaction history across KCPs through the dedicated Transactions menu and `GET /api/transactions`. Anonymous access is rejected. A full 10-digit savings account filter selects only that account; no filter shows up to 100 latest postings across the cooperative. Opening deposits, ordinary deposits, and withdrawals are included. The response contains member name, membership/account numbers, cash direction/amount, reference/note, date, servicing KCP, and recording staff. It does not expose NIK, contact fields, session data, credit analysis, or other identity documents. Viewing history never grants posting or loan-decision authority. The member portal remains absent.

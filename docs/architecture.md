@@ -103,3 +103,11 @@ Store dated interest-policy versions and bands, reproducible daily balance refer
 Daily calculation records do not directly increase spendable account balances. Monthly credit records, journal entries, and balance effects commit together. Enforce account/date uniqueness for normal daily accrual and account/period uniqueness for monthly credit, with separately audited corrections. Recovery must fill missing days before the affected account is credited. Define cutoff and ordering between month-end credit and daily balance snapshots before coding.
 
 The business choice is recorded in [ADR-0007](adr/0007-daily-savings-interest-monthly-credit.md); implementation mechanics and day-count conventions remain proposals or open questions.
+
+## Local implementation baseline
+
+The MVP now uses PostgreSQL with pgx, a single Go API package, and same-origin Next.js API rewrites. See [implementation notes](implementation.md) for concrete choices and remaining policy review. Automated interest and loan disbursement are not enabled. These choices do not imply production-readiness sign-off.
+
+## Implemented package organization
+
+The local MVP now follows the domain-oriented organization in the [backend tech plan](tech-plan-phase-1-backend.md): thin `cmd/api`, explicit `internal/platform/app` construction, and `auth/member/cash/loan` domains with Gin HTTP adapters, services, and PostgreSQL stores. The initial global single-package implementation has been replaced. There is one API process and one shared PostgreSQL pool. No sqlc, ORM, workflow engine, worker service, or automatic schema redesign was introduced.

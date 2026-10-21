@@ -3,7 +3,7 @@
 Status: Initial planning draft  
 Last updated: 2026-10-21
 
-This documentation describes a single cooperative operating through multiple KCPs (service branches). It is written in English and records the decisions discussed with the project owner. No application has been implemented yet.
+This documentation describes a single cooperative operating through multiple KCPs (service branches). It is written in English and records the decisions discussed with the project owner. The Phase 1 application is now implemented for local review; see [implementation notes](implementation.md). Operational readiness is not complete.
 
 ## Current delivery scope
 
@@ -38,3 +38,23 @@ The baseline and its diagrams describe intended behavior, not existing software.
 ## Next planning milestone
 
 Begin the small implementation steps in the [roadmap](roadmap.md). Resolve only the decisions needed for the next step. Lending rules are needed before lending implementation; savings-interest calculation details are not Phase 1 blockers.
+
+## Backend implementation references
+
+- [Gin/domain backend tech plan](tech-plan-phase-1-backend.md)
+- [TDD and validation evidence](testing/gin-refactor.tdd.md)
+
+- [Local Docker deployment runbook](deployment/docker-local.md)
+
+- [Savings account numbers tech plan](tech-plan-savings-account-numbers.md)
+- [Savings account numbers TDD evidence](testing/savings-account-numbers.tdd.md)
+
+- [Account-filtered transaction history tech plan](tech-plan-transaction-history.md)
+- [Transaction history TDD evidence](testing/transaction-history.tdd.md)
+
+- [Transaction date filters tech plan](tech-plan-transaction-date-filters.md)
+- [Transaction date filters TDD evidence](testing/transaction-date-filters.tdd.md)
+
+- [CI quality tech plan](tech-plan-ci-quality.md)
+- [Quality checks and coverage](testing/quality-checks.md)
+- [CI quality validation evidence](testing/ci-quality.tdd.md)

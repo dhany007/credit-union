@@ -1,0 +1,84 @@
+name: credit-union
+
+x-api: &api
+  image: credit-union-api:local
+  build:
+    context: ./backend
+  environment: &api-environment
+    DATABASE_URL: postgresql://credit_union:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.docker}@db:5432/credit_union?sslmode=disable
+    API_ADDR: 0.0.0.0:8080
+    APP_ORIGIN: http://localhost:${WEB_PORT:-3000}
+    COOKIE_SECURE: "false"
+    APPROVAL_LIMIT_IDR: ${APPROVAL_LIMIT_IDR:-0}
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: credit_union
+      POSTGRES_USER: credit_union
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.docker}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U credit_union -d credit_union"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  migrate:
+    <<: *api
+    command: ["/app/migrate"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *api
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+  web:
+    image: credit-union-web:local
+    build:
+      context: ./frontend
+      args:
+        API_URL: http://api:8080
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+  seed:
+    <<: *api
+    profiles: ["tools"]
+    environment:
+      <<: *api-environment
+      DEV_SEED_PASSWORD: ${DEV_SEED_PASSWORD:-}
+    command: ["/app/seed"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+volumes:
+  postgres_data:
