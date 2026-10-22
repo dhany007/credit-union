@@ -1,6 +1,6 @@
 # Delivery Roadmap
 
-Status: Initial MVP scope confirmed on 2026-10-21. Delivery order and implementation details are proposed; no dates are committed.
+Status: Phase 1 implementation released as v0.1.0. Technical UAT and populated local restore drills passed on 2026-10-22; owner acceptance and real-money pilot readiness remain open. No future delivery dates are committed.
 
 ## Phase 1 — Core MVP
 
@@ -61,7 +61,8 @@ Add further features only when requested: richer reports, dedicated cash-session
 - [x] Allocate separate savings account numbers and support exact cross-KCP lookup.
 - [x] Add a dedicated transaction menu with exact account filtering, Today/Last 7 days/Last 30 days/inclusive Custom dates in Asia/Jakarta, and 50-row pagination.
 - [x] Implement loan applications and decisions; disbursement and repayment explicitly deferred.
-- [ ] Verify core flows and prepare a controlled pilot.
+- [x] Verify core flows through API and browser UAT; rehearse populated backup restoration and reconcile balances/journals.
+- [ ] Obtain owner acceptance, approve operational policies, and prepare a controlled real-money pilot.
 - [ ] Implement savings interest in Phase 2.
 
 ## Phase 1 lending clarification (2026-10-21)
@@ -69,6 +70,6 @@ Add further features only when requested: richer reports, dedicated cash-session
 The project owner explicitly selected loan application and approval only. Disbursement, repayment scheduling, and repayments are deferred until lending rules are agreed. Approval is a workflow decision and does not create loan principal, move cash, or imply disbursement eligibility. Earlier references to a live lending pilot apply only when disbursement is later introduced.
 ## Local implementation status
 
-See [implementation notes](implementation.md) for completed code, verification, and assumptions. Approval is disabled by default until an explicit limit is configured. Pilot readiness remains incomplete; the documentation checkbox is not production sign-off.
+See [implementation notes](implementation.md) for completed code, verification, and assumptions. Approval is disabled by default until an explicit limit is configured. Technical UAT and two populated restore checks passed on 2026-10-22; [acceptance and recovery evidence](testing/phase-1-uat.md) records the scope and results. Owner acceptance and operational pilot readiness remain incomplete; the documentation checkbox is not production sign-off.
 
 - [x] Record and display atomic before/after member balance snapshots on new cash movements; preserve unknown historical values.

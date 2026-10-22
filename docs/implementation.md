@@ -31,9 +31,9 @@ These implementation choices do not mark all proposed business policies as appro
 
 ## Verification and remaining work
 
-PostgreSQL integration tests with Go race detector cover the critical financial and access cases; frontend production build includes TypeScript checking. The local login page has been visually checked in the in-app browser. No production load, security audit, or restore drill has been completed.
+PostgreSQL integration tests with Go race detector cover the critical financial and access cases; frontend production build includes TypeScript checking. The local login page has been visually checked in the in-app browser. Populated local backup/restore drills and technical API/browser UAT passed on 2026-10-22; see [UAT and recovery evidence](testing/phase-1-uat.md). Production load and security audits have not been completed.
 
-Still pending before operational rollout: agreed approval limits, member identity correction, product/accounting sign-off, cash transfer/opening procedures, reversal support, backup restore verification, production access setup, and operational acceptance. Phase 2 savings interest remains deferred.
+Still pending before operational rollout: agreed approval limits, member identity correction, product/accounting sign-off, cash transfer/opening procedures, an approved correction/reversal path, production recovery objectives and retention, production access setup, and owner/operational acceptance. Phase 2 savings interest remains deferred.
 
 ## Gin refactor
 
@@ -106,3 +106,7 @@ flowchart LR
 ```
 
 The Transactions table and member cash history show before/after balances. Zero is formatted as currency; a dash means an older snapshot was not recorded. The snapshots are member savings balances. journal_lines remains the double-entry journal. Migration3 performs no monetary backfill or timestamp-based reconstruction. See ADR-0011 and the member-balance-ledger tech plan/evidence.
+
+## Separate cash-service navigation
+
+The frontend now provides separate Setor Tunai / Cash Deposit and Tarik Tunai / Cash Withdrawal navigation and member-detail shortcuts. Both render the same existing cash form and call the unchanged cash API. The menu determines the transaction kind; switching services clears unfinished amount/note/confirmation state. EN/ID and existing light/dark tokens are preserved. See [verification](testing/cash-navigation.md).

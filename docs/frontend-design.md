@@ -32,3 +32,7 @@ Confirmed requirement: Phase 1 supports Bahasa Indonesia (`id`) and English (`en
 - The document language is updated for screen readers. A trusted pre-paint script applies the saved/system theme, with hydration suppression limited to the root attributes that it changes.
 
 Implementation uses React context and the existing CSS tokens; no additional runtime i18n/theme dependency or localized URL routing is introduced. See [frontend preference verification](testing/frontend-preferences.md).
+
+## Cash-service navigation
+
+Cash Deposit (Setor Tunai) and Cash Withdrawal (Tarik Tunai) are separate navigation entries and member-detail shortcuts. Both render the same cash form and use the existing cash API. The active menu determines the transaction kind; there is no second mode selector inside the form. Switching services clears the amount, note, confirmation and notices while retaining the selected account. Navigation is disabled while an operation is pending. Labels use the EN/ID dictionary and existing light/dark tokens.
