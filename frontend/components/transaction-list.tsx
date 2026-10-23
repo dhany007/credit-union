@@ -1,4 +1,5 @@
 "use client";
+import { movementLabel, movementSign } from "@/lib/interest";
 
 import { useEffect, useState } from "react";
 import { Loader2, Search } from "lucide-react";
@@ -227,13 +228,11 @@ export function TransactionList() {
                     </td>
                     <td className="p-4">
                       <Badge variant="outline">
-                        {row.kind === "deposit"
-                          ? t("Setoran tunai")
-                          : t("Penarikan tunai")}
+                        {t(movementLabel(row.kind))}
                       </Badge>
                     </td>
                     <td className="whitespace-nowrap p-4 text-right font-mono text-xs">
-                      {row.kind === "deposit" ? "+" : "−"}
+                      {movementSign(row.kind)}
                       {money(row.amount)}
                     </td>
                     <td className="whitespace-nowrap p-4 text-right font-mono text-xs" title={row.balance_before == null ? t("Saldo historis tidak tersedia") : undefined}>
@@ -244,7 +243,7 @@ export function TransactionList() {
                     </td>
                     <td className="p-4 text-xs">
                       <p>{row.branch}</p>
-                      <p className="mt-1 text-muted-foreground">{row.actor}</p>
+                      <p className="mt-1 text-muted-foreground">{row.actor === "System" ? t("Sistem") : row.actor}</p>
                     </td>
                     <td className="p-4 pr-5">
                       <p className="break-all font-mono text-[10px]">

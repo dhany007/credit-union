@@ -158,3 +158,7 @@ GitHub Actions runs the same pinned linter and formatting checks for relevant ba
 ## Automated quality checks
 
 GitHub Actions runs Go lint/formatting and backend vet/race-enabled PostgreSQL tests for backend changes, and frontend ESLint/typecheck/unit tests/production build for frontend changes. Shared Makefile/Compose configuration changes run both stacks; documentation-only changes skip these checks. Frontend local commands are npm run lint, npm run typecheck, npm test, and npm run build from frontend/ using Node24. See [quality checks and coverage](docs/testing/quality-checks.md) for database isolation, limits, and required-check activation.
+
+### Savings interest (Phase 2)
+
+Supervisor can configure the global annual rate and balance bands under Savings interest. Policies take effect tomorrow or later. Set SAVINGS_INTEREST_ENABLED=true in your local .env.docker after reviewing the configuration, then make up. Daily closing and monthly non-cash credits run inside the API; no extra service is needed. See [interest operations](docs/deployment/savings-interest.md) and [accepted rules](docs/savings-interest.md). EN/ID and light/dark remain supported.

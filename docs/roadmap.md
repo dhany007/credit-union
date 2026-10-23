@@ -48,7 +48,7 @@ These decisions can be made when their step is reached. They do not all block st
 
 ## Phase 2 — Savings interest and requested enhancements
 
-Implement the already agreed annual whole-balance savings interest model: daily calculation and monthly credit, global rate, and Supervisor-managed bands. Resolve OQ-018 through OQ-022 at this stage, not as Phase 1 prerequisites.
+Implement the already agreed annual whole-balance savings interest model: daily calculation and monthly credit, global rate, and Supervisor-managed bands. Owner acceptance of ADR-0012 on 2026-10-23 resolves the local calculation/posting choices; real-money deduction and operational readiness remain separate gates.
 
 Add further features only when requested: richer reports, dedicated cash-session/closing screens, configurable approval administration, member portal, additional products, integrations, and advanced collections. Basic cash tracing and accounting correctness remain in Phase 1 even when richer operational screens are deferred.
 
@@ -63,7 +63,8 @@ Add further features only when requested: richer reports, dedicated cash-session
 - [x] Implement loan applications and decisions; disbursement and repayment explicitly deferred.
 - [x] Verify core flows through API and browser UAT; rehearse populated backup restoration and reconcile balances/journals.
 - [ ] Obtain owner acceptance, approve operational policies, and prepare a controlled real-money pilot.
-- [ ] Implement savings interest in Phase 2.
+- [x] Implement savings interest in Phase 2: accepted policy versions, daily closing, monthly non-cash credit, Supervisor settings and EN/ID/light-dark history.
+- [ ] Complete owner acceptance of Phase 2 screens and operational readiness before real-money use.
 
 ## Phase 1 lending clarification (2026-10-21)
 
@@ -73,3 +74,7 @@ The project owner explicitly selected loan application and approval only. Disbur
 See [implementation notes](implementation.md) for completed code, verification, and assumptions. Approval is disabled by default until an explicit limit is configured. Technical UAT and two populated restore checks passed on 2026-10-22; [acceptance and recovery evidence](testing/phase-1-uat.md) records the scope and results. Owner acceptance and operational pilot readiness remain incomplete; the documentation checkbox is not production sign-off.
 
 - [x] Record and display atomic before/after member balance snapshots on new cash movements; preserve unknown historical values.
+
+## Phase 2 local delivery (2026-10-23)
+
+Rules and starting rates accepted in [ADR-0012](adr/0012-savings-interest-calculation-and-posting.md). See [technical validation](testing/savings-interest.tdd.md) and [local operation](deployment/savings-interest.md). Lending disbursement/repayment remain deferred. No additional Phase 2 product is implicitly committed.

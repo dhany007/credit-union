@@ -27,7 +27,7 @@ Open questions are not approved defaults. Owner roles below are suggested decisi
 
 ## Savings interest decisions
 
-Confirmed: whole-balance annual rate by band, daily calculation, and monthly credit. The following are unresolved implementation inputs, not reasons to reopen the confirmed model.
+Confirmed: whole-balance annual rate by band, daily calculation, and monthly credit. Owner acceptance on 2026-10-23 is recorded in ADR-0012; original questions are retained below for history. OQ-018: per-account Jakarta closing balance. OQ-019: Actual/365 Fixed and monthly half-up whole-IDR rounding without carry. OQ-020: approved rates, explicit global fallback and prospective audited Supervisor versions. OQ-021: first-day credit and actual-day late compounding; real-money deductions and unsupported closure/correction workflows remain gated. OQ-022: monthly expense/savings posting at home KCP for local implementation; real-money readiness remains separate.
 
 | ID | Decision required | Suggested owner | Blocking milestone |
 | --- | --- | --- | --- |

@@ -30,6 +30,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { InterestSettings } from "@/components/interest-settings";
+import { movementLabel, movementSign } from "@/lib/interest";
 import { TransactionList } from "@/components/transaction-list";
 
 type User = {
@@ -387,6 +389,7 @@ export default function Home() {
             { id: "withdrawal", label: t("Tarik Tunai"), icon: ArrowUpRight },
             { id: "loans", label: t("Pinjaman"), icon: CreditCard },
             { id: "transactions", label: t("Transaksi"), icon: ReceiptText },
+ ...(user.role === "supervisor" ? [{ id: "interest", label: t("Bunga simpanan"), icon: Wallet }] : []),
           ].map((item) => (
             <button
               key={item.id}
@@ -444,6 +447,7 @@ export default function Home() {
                 run(async () => {
                   await api("/logout", { method: "POST" });
                   setUser(null);
+ setTab("members");
                   setResolvedMember(null);
                   setAccountInput("");
                   accountLookupVersion.current++;
@@ -471,6 +475,7 @@ export default function Home() {
                     ? t("Transaksi tunai")
                     : tab === "transactions"
                       ? t("Riwayat simpanan")
+ : tab === "interest" ? t("Pengaturan tarif")
                       : t("Pengajuan & keputusan")}
               </p>
               <h1 className="font-serif text-4xl">
@@ -480,6 +485,7 @@ export default function Home() {
                     ? t(cashKind === "deposit" ? "Setor Tunai" : "Tarik Tunai")
                     : tab === "transactions"
                       ? t("Transaksi")
+ : tab === "interest" ? t("Bunga simpanan")
                       : t("Layanan pinjaman")}
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
@@ -491,9 +497,10 @@ export default function Home() {
                       )
                     : tab === "transactions"
                       ? t(
-                          "Tinjau setoran dan penarikan anggota dari seluruh KCP.",
+                          "Tinjau setoran, penarikan, dan bunga anggota dari seluruh KCP.",
                         )
-                      : t(
+                      : tab === "interest" ? t("Kelola tarif tahunan dan pantau kredit bunga bulanan.")
+ : t(
                           "Kelola pengajuan anggota. Pencairan belum tersedia pada fase ini.",
                         )}
               </p>
@@ -1007,7 +1014,8 @@ export default function Home() {
               <History rows={history} selected={!!selected} />
             </div>
           )}
-          {tab === "transactions" && <TransactionList />}
+          {tab === "interest" && user.role === "supervisor" && <InterestSettings key={user.id} />}
+{tab === "transactions" && <TransactionList />}
           {tab === "loans" && (
             <>
               {newLoan && user.role === "teller" && (
@@ -1341,7 +1349,7 @@ function History({
       <div className="border-b p-5">
         <h2 className="text-sm font-semibold">{t("Riwayat transaksi")}</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          {t("Transaksi tunai terbaru pada rekening anggota")}
+          {t("Transaksi simpanan terbaru pada rekening anggota")}
         </p>
       </div>
       {rows.length === 0 ? (
@@ -1356,7 +1364,7 @@ function History({
           {rows.map((transaction) => (
             <div key={transaction.reference} className="flex gap-3 p-5">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary">
-                {transaction.kind === "deposit" ? (
+                {transaction.kind !== "withdrawal" ? (
                   <ArrowDownLeft size={16} />
                 ) : (
                   <ArrowUpRight size={16} />
@@ -1365,12 +1373,10 @@ function History({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap justify-between gap-2">
                   <p className="text-sm font-medium">
-                    {transaction.kind === "deposit"
-                      ? t("Setoran tunai")
-                      : t("Penarikan tunai")}
+                    {t(movementLabel(transaction.kind))}
                   </p>
                   <p className="font-mono text-xs">
-                    {transaction.kind === "deposit" ? "+" : "−"}
+                    {movementSign(transaction.kind)}
                     {money(transaction.amount)}
                   </p>
                 </div>
@@ -1380,7 +1386,7 @@ function History({
                     : `${t("Saldo sebelum")}: ${money(transaction.balance_before)} → ${t("Saldo sesudah")}: ${money(transaction.balance_after)}`}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {transaction.branch} · {transaction.actor}
+                  {transaction.branch} · {transaction.actor === "System" ? t("Sistem") : transaction.actor}
                 </p>
                 <p className="mt-1 text-[10px] text-muted-foreground">
                   {date(transaction.created_at)}

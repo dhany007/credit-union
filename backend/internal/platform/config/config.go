@@ -11,11 +11,12 @@ const MaxAmount int64 = 1_000_000_000_000
 
 // Config contains validated process settings.
 type Config struct {
-	DatabaseURL   string
-	Origin        string
-	Address       string
-	SecureCookies bool
-	ApprovalLimit int64
+	DatabaseURL     string
+	Origin          string
+	Address         string
+	SecureCookies   bool
+	ApprovalLimit   int64
+	InterestEnabled bool
 }
 
 // Load parses environment settings without disclosing secret values.
@@ -36,6 +37,10 @@ func Load(getenv func(string) string) (Config, error) {
 	c.SecureCookies, err = strconv.ParseBool(value("COOKIE_SECURE", "false"))
 	if err != nil {
 		return Config{}, fmt.Errorf("COOKIE_SECURE must be true or false")
+	}
+	c.InterestEnabled, err = strconv.ParseBool(value("SAVINGS_INTEREST_ENABLED", "false"))
+	if err != nil {
+		return Config{}, fmt.Errorf("SAVINGS_INTEREST_ENABLED must be true or false")
 	}
 	c.ApprovalLimit, err = strconv.ParseInt(value("APPROVAL_LIMIT_IDR", "0"), 10, 64)
 	if err != nil || c.ApprovalLimit < 0 || c.ApprovalLimit > MaxAmount {

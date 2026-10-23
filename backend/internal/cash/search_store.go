@@ -14,12 +14,12 @@ func (s *PostgresStore) Search(ctx context.Context, f searchFilter) ([]ListedTra
 		beforeRef = f.Before.Reference
 	}
 	rows, err := s.pool.Query(ctx, `
- SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,u.name,t.balance_before,t.balance_after,
+ SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,COALESCE(u.name,'System'),t.balance_before,t.balance_after,
  m.id,m.name,m.account_number
  FROM transactions t
  JOIN members m ON m.id=t.member_id
  JOIN branches b ON b.id=t.branch_id
- JOIN users u ON u.id=t.actor_id
+ LEFT JOIN users u ON u.id=t.actor_id
  WHERE t.created_at >= $1 AND t.created_at < $2
  AND ($3::text='' OR m.account_number=$3)
  AND ($4::timestamptz IS NULL OR (t.created_at,t.id)<($4,$5::text))

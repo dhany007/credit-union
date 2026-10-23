@@ -43,8 +43,9 @@ DO $$ BEGIN
  OR t.branch_id<>m.home_branch_id OR t.created_at<>m.created_at))) THEN
  RAISE EXCEPTION 'Broken ledger chain or invalid opening deposit';END IF;
  IF EXISTS(SELECT 1 FROM demo_actual_members m WHERE m.balance<0 OR m.balance<>(SELECT sum(
- CASE kind WHEN 'deposit' THEN amount ELSE -amount END) FROM demo_actual_tx t WHERE t.member_id=m.id)
- OR m.balance<>(SELECT balance_after FROM demo_actual_tx t WHERE t.member_id=m.id ORDER BY created_at DESC,id DESC LIMIT 1)) THEN
+ CASE kind WHEN 'withdrawal' THEN -amount ELSE amount END) FROM transactions t WHERE t.member_id=m.id)
+ OR (SELECT sum(CASE kind WHEN 'deposit' THEN amount ELSE -amount END) FROM demo_actual_tx t WHERE t.member_id=m.id)
+ <>(SELECT balance_after FROM demo_actual_tx t WHERE t.member_id=m.id ORDER BY created_at DESC,id DESC LIMIT 1)) THEN
  RAISE EXCEPTION 'Member closing balance does not reconcile';END IF;
  IF EXISTS(SELECT m.id FROM demo_actual_members m CROSS JOIN generate_series(timestamptz '2026-01-01 00:00+07',
  (SELECT date_trunc('month',cutoff) FROM demo_actual_config),interval '1 month') month_start
