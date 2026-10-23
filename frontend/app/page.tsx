@@ -136,8 +136,9 @@ export default function Home() {
   const [error, setError] = useState(""),
     [success, setSuccess] = useState<Notice | null>(null),
     [busy, setBusy] = useState(false);
-  const [cashKind, setCashKind] = useState("deposit"),
-    [cashAmount, setCashAmount] = useState(""),
+  const isCash = tab === "deposit" || tab === "withdrawal";
+  const cashKind = tab === "withdrawal" ? "withdrawal" : "deposit";
+  const [cashAmount, setCashAmount] = useState(""),
     [cashNote, setCashNote] = useState(""),
     [confirmCash, setConfirmCash] = useState(false);
   const [newLoan, setNewLoan] = useState(false),
@@ -226,7 +227,11 @@ export default function Home() {
   }
   function navigate(value: string) {
     accountLookupVersion.current++;
-    if (value === "cash") setAccountInput(member?.account_number ?? "");
+    if (value === "deposit" || value === "withdrawal") {
+      setAccountInput(member?.account_number ?? "");
+      setCashAmount("");
+      setCashNote("");
+    }
     setTab(value);
     setError("");
     setSuccess(null);
@@ -378,13 +383,15 @@ export default function Home() {
         >
           {[
             { id: "members", label: t("Anggota"), icon: Users },
-            { id: "cash", label: t("Setor & tarik"), icon: Wallet },
+            { id: "deposit", label: t("Setor Tunai"), icon: ArrowDownLeft },
+            { id: "withdrawal", label: t("Tarik Tunai"), icon: ArrowUpRight },
             { id: "loans", label: t("Pinjaman"), icon: CreditCard },
             { id: "transactions", label: t("Transaksi"), icon: ReceiptText },
           ].map((item) => (
             <button
               key={item.id}
               onClick={() => navigate(item.id)}
+              disabled={busy}
               aria-current={tab === item.id ? "page" : undefined}
               className={cn(
                 "flex flex-1 items-center gap-3 rounded-md px-3 py-3 text-sm transition-colors lg:flex-none",
@@ -460,7 +467,7 @@ export default function Home() {
               <p className="mb-2 text-[10px] uppercase tracking-[.24em] text-muted-foreground">
                 {tab === "members"
                   ? t("Kenali anggota Anda")
-                  : tab === "cash"
+                  : isCash
                     ? t("Transaksi tunai")
                     : tab === "transactions"
                       ? t("Riwayat simpanan")
@@ -469,8 +476,8 @@ export default function Home() {
               <h1 className="font-serif text-4xl">
                 {tab === "members"
                   ? t("Keanggotaan")
-                  : tab === "cash"
-                    ? t("Setoran & penarikan")
+                  : isCash
+                    ? t(cashKind === "deposit" ? "Setor Tunai" : "Tarik Tunai")
                     : tab === "transactions"
                       ? t("Transaksi")
                       : t("Layanan pinjaman")}
@@ -478,7 +485,7 @@ export default function Home() {
               <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
                 {tab === "members"
                   ? t("Temukan dan layani anggota dari seluruh KCP.")
-                  : tab === "cash"
+                  : isCash
                     ? t(
                         "Catat transaksi pada rekening anggota yang sama, dari KCP mana saja.",
                       )
@@ -809,12 +816,14 @@ export default function Home() {
                           </p>
                         </div>
                         {user.role === "teller" && (
-                          <Button
-                            className="mt-6 w-full"
-                            onClick={() => navigate("cash")}
-                          >
-                            {t("Layani transaksi")} <ArrowUpRight size={15} />
-                          </Button>
+                          <div className="mt-6 grid gap-2 sm:grid-cols-2">
+                            <Button onClick={() => navigate("deposit")} disabled={busy}>
+                              <ArrowDownLeft size={15} /> {t("Setor Tunai")}
+                            </Button>
+                            <Button onClick={() => navigate("withdrawal")} disabled={busy}>
+                              <ArrowUpRight size={15} /> {t("Tarik Tunai")}
+                            </Button>
+                          </div>
                         )}
                       </>
                     ) : (
@@ -833,40 +842,10 @@ export default function Home() {
               </div>
             </>
           )}
-          {tab === "cash" && (
+          {isCash && (
             <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,440px)_1fr]">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="mb-6 flex gap-2 rounded-lg bg-secondary/50 p-1">
-                    {[
-                      {
-                        id: "deposit",
-                        label: t("Setor tunai"),
-                        icon: ArrowDownLeft,
-                      },
-                      {
-                        id: "withdrawal",
-                        label: t("Tarik tunai"),
-                        icon: ArrowUpRight,
-                      },
-                    ].map((k) => (
-                      <button
-                        key={k.id}
-                        type="button"
-                        onClick={() => {
-                          setCashKind(k.id);
-                          setConfirmCash(false);
-                        }}
-                        className={cn(
-                          "flex flex-1 items-center justify-center gap-2 rounded-md p-3 text-sm",
-                          cashKind === k.id && "bg-card shadow-sm",
-                        )}
-                      >
-                        <k.icon size={16} />
-                        {k.label}
-                      </button>
-                    ))}
-                  </div>
                   <form
                     className="mb-6 grid gap-3"
                     onSubmit={(event) => {

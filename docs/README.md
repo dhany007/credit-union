@@ -64,3 +64,5 @@ Begin the small implementation steps in the [roadmap](roadmap.md). Resolve only 
 
 - [Reconciled local demo data](development/demo-data.md)
 - [Demo data tech plan](tech-plan-demo-data.md)
+
+- [Phase 1 technical UAT and populated recovery drill](testing/phase-1-uat.md)

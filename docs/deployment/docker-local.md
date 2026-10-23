@@ -145,3 +145,22 @@ Migration 3 adds nullable before/after balance snapshots and consistency constra
 From a Bash environment with GNU Make and Docker Compose, use `make up` for build/start/migrations and `make seed` for optional staff plus 15-member demo data. Configure `.env.docker` first. Seed creates a private backup and restores service availability after success or failure; it refuses unrelated existing financial data. See [demo data](../development/demo-data.md).
 
 Use `make release VERSION=v0.1.0` only after intended changes are merged into remote `main`. GitHub CLI authentication and repository write access are required. This publishes a new tag and GitHub Release with generated notes at the resolved remote main SHA; it does not deploy Docker services. Existing tags are refused.
+
+## Populated local recovery drill
+
+A two-stage drill passed on 2026-10-22: the main populated backup restored into a separate Docker volume without any row/sequence/schema mismatch, and the completed UAT dataset (including decisions and stored retry responses) restored into a fresh database with identical balances/journals. See [results and acceptance boundary](../testing/phase-1-uat.md).
+
+For another local drill, keep the source backup private, pause writers while capturing the backup and source manifest, and resume them even if a command fails. Restore only into a new isolated volume or fresh, explicitly named database. Create the target first; if it exists, stop and choose a new target. Do not restore over the application database.
+
+The reusable verification SQL reads public application tables and creates only transaction-local temporary tables. Run it against source and restored databases before any UAT writes, using identical session settings:
+
+```bash
+# Copy this file into the PostgreSQL container used for each database.
+docker compose --env-file .env.docker cp docs/testing/sql/phase-1-reconciliation.sql db:/tmp/reconcile.sql
+# Example for the source; use the isolated target's Compose configuration and DB name for the restored copy.
+docker compose --env-file .env.docker exec -T db psql -U credit_union -d credit_union -qAt -f /tmp/reconcile.sql > .local/source-manifest.json
+```
+
+Capture the target manifest in a separate file and require byte-identical JSON using `cmp` (Bash) or parsed/file comparison in PowerShell. Any failed assertion or mismatch blocks success. Also compare schema-only dumps made with `--no-owner --no-privileges`, excluding only randomly generated pg_dump restrict/unrestrict guard lines. The data manifest covers all table fields, grouped money totals, and sequence values/called state; schema comparison covers constraints/indexes. Repeat reconciliation after UAT. Retain evidence and archives before removing only the deliberately created test resources.
+
+This drill validates a local database archive, not cluster roles, secrets/configuration recovery, physical cash procedures, or an agreed production RPO/RTO. Store deployment secrets separately and agree retention/recovery targets before real use.
