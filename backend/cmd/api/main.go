@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"credit-union/backend/internal/interest"
 	"credit-union/backend/internal/platform/app"
 	"credit-union/backend/internal/platform/config"
 	"credit-union/backend/internal/platform/database"
@@ -42,9 +43,24 @@ func run() int {
 		return 1
 	}
 	defer pool.Close()
+	interestService := interest.NewService(pool, database.NewRunner(pool), cfg.InterestEnabled)
+	jobDone := make(chan struct{})
+	jobCtx, stopJob := context.WithCancel(ctx)
+	defer stopJob()
+	go func() {
+		defer close(jobDone)
+		interestService.Run(jobCtx, logger)
+	}()
+	defer func() { stopJob(); <-jobDone }()
 	gin.SetMode(gin.ReleaseMode)
-	server := &http.Server{Addr: cfg.Address, Handler: app.New(pool, cfg, logger), ReadHeaderTimeout: readHeaderTimeout,
-		ReadTimeout: readTimeout, WriteTimeout: writeTimeout, IdleTimeout: idleTimeout}
+	server := &http.Server{
+		Addr:              cfg.Address,
+		Handler:           app.NewWithInterest(pool, cfg, logger, interestService),
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+	}
 	result := make(chan error, 1)
 	go func() { result <- server.ListenAndServe() }()
 	logger.Info("api listening", "address", cfg.Address)

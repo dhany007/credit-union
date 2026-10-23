@@ -10,6 +10,7 @@ x-api: &api
     APP_ORIGIN: http://localhost:${WEB_PORT:-3000}
     COOKIE_SECURE: "false"
     APPROVAL_LIMIT_IDR: ${APPROVAL_LIMIT_IDR:-0}
+    SAVINGS_INTEREST_ENABLED: ${SAVINGS_INTEREST_ENABLED:-false}
 
 services:
   db:

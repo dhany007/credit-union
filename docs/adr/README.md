@@ -35,3 +35,5 @@ Date: YYYY-MM-DD
 ## Consequences
 ## Open details
 ```
+
+- [ADR-0012: Savings interest calculation and posting](0012-savings-interest-calculation-and-posting.md) — Accepted 2026-10-23

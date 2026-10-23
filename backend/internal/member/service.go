@@ -55,6 +55,9 @@ func (s *Service) Register(
 		return nil, fault.New(fault.Invalid, "Check NIK, name, phone, and address")
 	}
 	return s.runner.Run(ctx, cmd, fingerprintInput(input), func(tx pgx.Tx) (any, error) {
+		if err := database.LockSavingsWriter(ctx, tx); err != nil {
+			return nil, err
+		}
 		id, accountNumber, err := s.store.Insert(ctx, tx, input, actor.BranchID)
 		if err != nil {
 			return nil, fmt.Errorf("insert member: %w", err)

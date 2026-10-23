@@ -51,6 +51,9 @@ func (s *Service) DepositInTx(ctx context.Context, tx pgx.Tx, actor auth.Actor,
 	return s.postInTx(ctx, tx, actor, Input{MemberID: memberID, Amount: amount, Kind: "deposit", Note: note})
 }
 func (s *Service) postInTx(ctx context.Context, tx pgx.Tx, actor auth.Actor, input Input) (string, error) {
+	if err := database.LockSavingsWriter(ctx, tx); err != nil {
+		return "", err
+	}
 	balance, err := s.store.MemberBalance(ctx, tx, input.MemberID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", fault.New(fault.NotFound, "Member not found")

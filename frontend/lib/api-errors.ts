@@ -1,6 +1,12 @@
 import type { Locale } from "@/lib/messages";
 
 const errors: Record<string, string> = {
+ "Savings business date is already closed": "Tanggal pembukuan simpanan sudah ditutup",
+ "Interest policy must take effect tomorrow or later without changing activation": "Tarif harus berlaku paling cepat besok dan tidak boleh memajukan tanggal aktivasi",
+ "Savings interest policy changed. Reload and try again": "Aturan bunga berubah. Muat ulang lalu coba lagi",
+ "Savings interest bands overlap or are not ordered": "Rentang bunga simpanan bertumpuk atau belum berurutan",
+ "Invalid savings interest bands": "Rentang bunga simpanan tidak valid",
+ "Invalid savings interest policy": "Aturan bunga simpanan tidak valid",
   "Invalid date filter. Check period and start/end dates": "Filter tanggal tidak valid. Periksa periode dan tanggal mulai/akhir",
   "Invalid pagination cursor. Apply the filters again": "Halaman tidak valid. Terapkan kembali filter",
   "Invalid account number. Enter exactly 10 digits":

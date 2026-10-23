@@ -2,6 +2,7 @@ package cash
 
 import (
 	"context"
+	"credit-union/backend/internal/platform/database"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -49,6 +50,10 @@ func (s *PostgresStore) BranchCash(ctx context.Context, id int) (int64, error) {
 // Post writes the balance, transaction, and journal without committing.
 func (s *PostgresStore) Post(ctx context.Context, tx pgx.Tx, memberID, actorID int64, branchID int,
 	amount int64, kind, note, reference string) error {
+	postedAt, err := database.PostingTime(ctx, tx)
+	if err != nil {
+		return err
+	}
 	delta := amount
 	debit, credit := "cash", "member_savings"
 	if kind == "withdrawal" {
@@ -62,13 +67,13 @@ func (s *PostgresStore) Post(ctx context.Context, tx pgx.Tx, memberID, actorID i
 	}
 	if _, err := tx.Exec(
 		ctx, `
- INSERT INTO transactions(id,member_id,branch_id,actor_id,kind,amount,note,balance_before,balance_after)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-		reference, memberID, branchID, actorID, kind, amount, note, before, after,
+ INSERT INTO transactions(id,member_id,branch_id,actor_id,kind,amount,note,balance_before,balance_after,created_at)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+		reference, memberID, branchID, actorID, kind, amount, note, before, after, postedAt,
 	); err != nil {
 		return err
 	}
-	_, err := tx.Exec(ctx, `
+	_, err = tx.Exec(ctx, `
  INSERT INTO journal_lines(transaction_id,line_no,account,debit,credit)
  VALUES($1,1,$2,$4,0),($1,2,$3,0,$4)`, reference, debit, credit, amount)
 	if err != nil {
@@ -80,8 +85,8 @@ func (s *PostgresStore) Post(ctx context.Context, tx pgx.Tx, memberID, actorID i
 // History lists the latest transactions for a member.
 func (s *PostgresStore) History(ctx context.Context, id int64) ([]Transaction, error) {
 	rows, err := s.pool.Query(ctx, `
- SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,u.name,t.balance_before,t.balance_after
- FROM transactions t JOIN branches b ON b.id=t.branch_id JOIN users u ON u.id=t.actor_id
+ SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,COALESCE(u.name,'System'),t.balance_before,t.balance_after
+ FROM transactions t JOIN branches b ON b.id=t.branch_id LEFT JOIN users u ON u.id=t.actor_id
  WHERE member_id=$1 ORDER BY t.created_at DESC LIMIT 100`, id)
 	if err != nil {
 		return nil, err
@@ -129,12 +134,13 @@ func (s *PostgresStore) Branches(ctx context.Context) ([]Branch, error) {
 // List returns the latest 100 rows in a deterministic order. Filter values stay parameterized.
 func (s *PostgresStore) List(ctx context.Context, accountNumber string) ([]ListedTransaction, error) {
 	query := `
-        SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,u.name,t.balance_before,t.balance_after,
+        SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,COALESCE(u.name,'System'),
+ t.balance_before,t.balance_after,
             m.id,m.name,m.account_number
         FROM transactions t
         JOIN members m ON m.id=t.member_id
         JOIN branches b ON b.id=t.branch_id
-        JOIN users u ON u.id=t.actor_id
+        LEFT JOIN users u ON u.id=t.actor_id
     `
 	var args []any
 	if accountNumber != "" {

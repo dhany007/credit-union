@@ -15,20 +15,22 @@ BEGIN
  END LOOP;
  IF EXISTS(SELECT t.id FROM transactions t LEFT JOIN journal_lines j ON j.transaction_id=t.id
  GROUP BY t.id,t.kind,t.amount HAVING count(j.*)<>2 OR sum(j.debit)<>sum(j.credit)
- OR count(*) FILTER(WHERE j.line_no=1 AND j.debit=t.amount AND j.credit=0 AND j.account=CASE t.kind WHEN 'deposit' THEN 'cash' ELSE 'member_savings' END)<>1
- OR count(*) FILTER(WHERE j.line_no=2 AND j.credit=t.amount AND j.debit=0 AND j.account=CASE t.kind WHEN 'deposit' THEN 'member_savings' ELSE 'cash' END)<>1) THEN
+ OR count(*) FILTER(WHERE j.line_no=1 AND j.debit=t.amount AND j.credit=0 AND j.account=CASE t.kind WHEN 'deposit' THEN 'cash' WHEN 'interest_credit' THEN 'savings_interest_expense' ELSE 'member_savings' END)<>1
+ OR count(*) FILTER(WHERE j.line_no=2 AND j.credit=t.amount AND j.debit=0 AND j.account=CASE t.kind WHEN 'withdrawal' THEN 'cash' ELSE 'member_savings' END)<>1) THEN
  RAISE EXCEPTION 'Transaction journal mismatch';END IF;
- IF EXISTS(SELECT m.id FROM members m WHERE m.balance<0 OR m.balance<>coalesce((SELECT sum(CASE kind WHEN 'deposit' THEN amount ELSE -amount END) FROM transactions t WHERE t.member_id=m.id),0)
+ IF EXISTS(SELECT m.id FROM members m WHERE m.balance<0 OR m.balance<>coalesce((SELECT sum(CASE kind WHEN 'withdrawal' THEN -amount ELSE amount END) FROM transactions t WHERE t.member_id=m.id),0)
  OR m.balance<>coalesce((SELECT sum(j.credit-j.debit) FROM journal_lines j JOIN transactions t ON t.id=j.transaction_id WHERE j.account='member_savings' AND t.member_id=m.id),0)) THEN
  RAISE EXCEPTION 'Member balance/cashflow/savings liability mismatch';END IF;
- IF EXISTS(SELECT 1 FROM transactions t JOIN users u ON u.id=t.actor_id WHERE u.branch_id<>t.branch_id OR u.role<>'teller'
+ IF EXISTS(SELECT 1 FROM transactions t LEFT JOIN users u ON u.id=t.actor_id JOIN members m ON m.id=t.member_id
+ WHERE (t.kind IN ('deposit','withdrawal') AND (u.id IS NULL OR u.branch_id<>t.branch_id OR u.role<>'teller'))
+ OR (t.kind='interest_credit' AND (t.actor_id IS NOT NULL OR t.branch_id<>m.home_branch_id))
  OR (t.balance_before IS NULL)<>(t.balance_after IS NULL)
- OR (t.balance_before IS NOT NULL AND (t.balance_before<0 OR t.balance_after<0 OR t.balance_after-t.balance_before<>CASE t.kind WHEN 'deposit' THEN t.amount ELSE -t.amount END))) THEN
+ OR (t.balance_before IS NOT NULL AND (t.balance_before<0 OR t.balance_after<0 OR t.balance_after-t.balance_before<>CASE t.kind WHEN 'withdrawal' THEN -t.amount ELSE t.amount END))) THEN
  RAISE EXCEPTION 'Snapshot/actor attribution mismatch';END IF;
  IF EXISTS(SELECT b.id FROM branches b WHERE coalesce((SELECT sum(j.debit-j.credit) FROM journal_lines j JOIN transactions t ON t.id=j.transaction_id WHERE j.account='cash' AND t.branch_id=b.id),0)<0) THEN
  RAISE EXCEPTION 'Negative KCP cash';END IF;
- IF (SELECT coalesce(sum(balance),0) FROM members)<>(SELECT coalesce(sum(debit-credit),0) FROM journal_lines WHERE account='cash') THEN
- RAISE EXCEPTION 'Global cash/savings mismatch';END IF;
+ IF (SELECT coalesce(sum(balance),0) FROM members)<>(SELECT coalesce(sum(debit-credit),0) FROM journal_lines WHERE account IN ('cash','savings_interest_expense')) THEN
+ RAISE EXCEPTION 'Global cash plus interest expense/savings mismatch';END IF;
 END $$;
 SELECT jsonb_build_object(
  'tables',(SELECT jsonb_object_agg(name,jsonb_build_object('rows',rows,'digest',digest)) FROM evidence_tables),

@@ -65,3 +65,7 @@ Additional worked examples are required for rounding, interest, fees, partial an
 - Every new opening deposit, cash deposit, and withdrawal records its actual before/after member savings balance atomically with the journals.
 - Retry, insufficient funds, concurrent posting, or audit/journal failure never duplicates or partially stores a balance movement.
 - All history views expose/display both snapshots, including an opening balance of zero. Older unrecorded snapshots remain explicit null and display as unavailable.
+
+## Phase 2 interest acceptance
+
+Use ADR-0012 and testing/savings-interest.tdd.md: exact whole-balance bands, fixed-365 daily calculation, monthly-only rounding, prospective audited Supervisor versions, System non-cash credit, no duplicate on retry/restart, missing-day rejection, failure rollback, fair processing of healthy accounts, populated restore parity and EN/ID/light-dark controls.

@@ -36,6 +36,8 @@ SELECT EXISTS(SELECT 1 FROM audit_events WHERE action='demo_seed_completed'
 
 DO $$
 BEGIN
+ IF EXISTS(SELECT 1 FROM interest_policies) THEN
+  RAISE EXCEPTION 'Seed before savings interest activation is configured';END IF;
  IF EXISTS(SELECT 1 FROM members) OR EXISTS(SELECT 1 FROM transactions)
  OR EXISTS(SELECT 1 FROM journal_lines) OR EXISTS(SELECT 1 FROM loans)
  OR EXISTS(SELECT 1 FROM requests) THEN
@@ -143,10 +145,13 @@ SELECT to_char(created_at,'YYYY-MM') AS period_month,count(*) transactions,
  FROM demo_plan GROUP BY 1 ORDER BY 1;
 
 \if :apply
+ SELECT pg_advisory_xact_lock_shared(101,1);
  LOCK TABLE members,transactions,journal_lines,loans,requests,audit_events IN SHARE ROW EXCLUSIVE MODE;
  DO $$
  DECLARE r record;new_id bigint;new_account text;
  BEGIN
+  IF EXISTS(SELECT 1 FROM interest_policies) THEN
+   RAISE EXCEPTION 'Seed before savings interest activation is configured';END IF;
   IF EXISTS(SELECT 1 FROM members) OR EXISTS(SELECT 1 FROM transactions)
   OR EXISTS(SELECT 1 FROM journal_lines) OR EXISTS(SELECT 1 FROM loans) OR EXISTS(SELECT 1 FROM requests) THEN
    RAISE EXCEPTION 'Financial data changed after preview; refusing to mix data';END IF;

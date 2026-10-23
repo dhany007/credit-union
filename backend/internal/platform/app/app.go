@@ -4,6 +4,7 @@ package app
 import (
 	"credit-union/backend/internal/auth"
 	"credit-union/backend/internal/cash"
+	"credit-union/backend/internal/interest"
 	"credit-union/backend/internal/loan"
 	"credit-union/backend/internal/member"
 	"credit-union/backend/internal/platform/config"
@@ -18,6 +19,16 @@ import (
 
 // New constructs the configured component with explicit dependencies.
 func New(pool *pgxpool.Pool, cfg config.Config, logger *slog.Logger) *gin.Engine {
+	return NewWithInterest(pool, cfg, logger, interest.NewService(pool, database.NewRunner(pool), cfg.InterestEnabled))
+}
+
+// NewWithInterest shares job status with the HTTP handlers.
+func NewWithInterest(
+	pool *pgxpool.Pool,
+	cfg config.Config,
+	logger *slog.Logger,
+	interestService *interest.Service,
+) *gin.Engine {
 	router := httpapi.New(cfg.Origin, logger)
 	runner := database.NewRunner(pool)
 	authService := auth.NewService(auth.NewPostgresStore(pool))
@@ -30,6 +41,7 @@ func New(pool *pgxpool.Pool, cfg config.Config, logger *slog.Logger) *gin.Engine
 	member.RegisterRoutes(routes, memberService, guard)
 	cash.RegisterRoutes(routes, cashService, guard)
 	loan.RegisterRoutes(routes, loanService, guard)
+	interest.RegisterRoutes(routes, interestService, guard)
 	httpapi.GET(routes, "/health", func(c *gin.Context) {
 		if err := pool.Ping(c.Request.Context()); err != nil {
 			httpapi.JSON(c, http.StatusServiceUnavailable, map[string]string{"error": "Database unavailable"})

@@ -7,7 +7,7 @@ This documentation describes a single cooperative operating through multiple KCP
 
 ## Current delivery scope
 
-Phase 1 is deliberately small: member registration, cash deposits, cash withdrawals, and basic lending through staff. Start with [scope](scope.md) and the [simplified roadmap](roadmap.md). Automated savings interest and advanced workflows are deferred to Phase 2. Detailed target-state documents are references, not a requirement to build everything now.
+Phase 1 is deliberately small: member registration, cash deposits, cash withdrawals, and basic lending through staff. Start with [scope](scope.md) and the [simplified roadmap](roadmap.md). Phase 2 savings interest is implemented locally; see the savings interest policy and validation links below. Advanced workflows remain deferred. Detailed target-state documents are references, not a requirement to build everything now.
 
 ## Reading order
 
@@ -66,3 +66,7 @@ Begin the small implementation steps in the [roadmap](roadmap.md). Resolve only 
 - [Demo data tech plan](tech-plan-demo-data.md)
 
 - [Phase 1 technical UAT and populated recovery drill](testing/phase-1-uat.md)
+
+- [Phase 2 savings interest tech plan](tech-plan-savings-interest.md)
+- [Phase 2 savings interest validation](testing/savings-interest.tdd.md)
+- [Local savings interest operation](deployment/savings-interest.md)

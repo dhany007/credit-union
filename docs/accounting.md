@@ -40,3 +40,7 @@ The confirmed business cadence is daily calculation with monthly balance crediti
 Two illustrative approaches require accounting review: recognize daily expense against an interest-payable account and settle that payable into member savings monthly, or keep daily calculation records and recognize expense when monthly interest is credited if the approved accounting policy permits. Select one approach; do not recognize the same expense twice.
 
 Monthly credit is non-cash. It increases the member savings liability and does not increase teller cash. Define gross interest, deductions, any withholding liabilities, branch dimensions, and reconciliation to the sum of daily records. Daily records and monthly postings require distinct identifiers and an auditable link.
+
+## Phase 2 local interest decision (2026-10-23)
+
+ADR-0012 accepts calculation-only daily records and monthly expense recognition for local implementation: Dr savings_interest_expense / Cr member_savings. System credits use home KCP, no cash line, and unique account/month settlement. For the current restricted model savings equals cash plus posted interest expense. Real-money deduction treatment and broader operational accounting readiness remain separate gates.
