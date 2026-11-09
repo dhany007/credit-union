@@ -19,7 +19,8 @@ flowchart LR
     members --> cash["Cash deposits and withdrawals"]
     cash --> loans["Loan application and approval"]
     loans --> check["Verify core flows before pilot"]
-    check --> later["Phase 2: Savings interest and enhancements"]
+    check --> later["Phase 2: Savings interest and local acceptance"]
+    later --> phase3["Phase 3 proposed: Lending lifecycle after product and accounting decisions"]
 ```
 
 ### Small implementation steps
@@ -52,6 +53,12 @@ Implement the already agreed annual whole-balance savings interest model: daily 
 
 Add further features only when requested: richer reports, dedicated cash-session/closing screens, configurable approval administration, member portal, additional products, integrations, and advanced collections. Basic cash tracing and accounting correctness remain in Phase 1 even when richer operational screens are deferred.
 
+## Phase 3 — Lending lifecycle (proposed)
+
+Extend approved applications through verified disbursement and basic in-system repayment. Repayments remain available at every KCP; the loan's responsible KCP is retained. This phase is not ready for financial implementation until product pricing and allocation, disbursement conditions, repayment exceptions, chart-of-accounts mappings, and cross-KCP accounting are approved. Do not reuse savings-interest rates. Record the accepted product/accounting model in a new ADR before implementation.
+
+See [Phase 2 acceptance and Phase 3 tech plan](tech-plan-phase-2-and-3.md). The plan is proposed; it does not authorize loan disbursement.
+
 ## Progress
 
 - [x] Record the simplified four-service MVP and defer advanced features.
@@ -64,7 +71,8 @@ Add further features only when requested: richer reports, dedicated cash-session
 - [x] Verify core flows through API and browser UAT; rehearse populated backup restoration and reconcile balances/journals.
 - [ ] Obtain owner acceptance, approve operational policies, and prepare a controlled real-money pilot.
 - [x] Implement savings interest in Phase 2: accepted policy versions, daily closing, monthly non-cash credit, Supervisor settings and EN/ID/light-dark history.
-- [ ] Complete owner acceptance of Phase 2 screens and operational readiness before real-money use.
+- [x] Obtain owner acceptance of local Phase 2 interest behavior and reconciliation on 2026-11-09.
+- [ ] Complete operational, accounting, and control readiness before using Phase 2 interest with live funds.
 
 ## Phase 1 lending clarification (2026-10-21)
 
@@ -77,4 +85,4 @@ See [implementation notes](implementation.md) for completed code, verification, 
 
 ## Phase 2 local delivery (2026-10-23)
 
-Rules and starting rates accepted in [ADR-0012](adr/0012-savings-interest-calculation-and-posting.md). See [technical validation](testing/savings-interest.tdd.md) and [local operation](deployment/savings-interest.md). Lending disbursement/repayment remain deferred. No additional Phase 2 product is implicitly committed.
+Rules and starting rates accepted in [ADR-0012](adr/0012-savings-interest-calculation-and-posting.md). See [technical validation](testing/savings-interest.tdd.md) and [local operation](deployment/savings-interest.md). Lending disbursement/repayment remain deferred. No additional Phase 2 product is implicitly committed. The local October credit and ledger reconciliation passed, and the project owner accepted the local Phase 2 result on 2026-11-09. This acceptance does not constitute live-money operational readiness.

@@ -220,6 +220,10 @@ export const messages = {
     "Member {number} registered. Opening deposit of IDR 50,000 received. Reference: {reference}",
   "{count} anggota ditampilkan · semua KCP":
     "{count} members shown · all branches",
+  "Menampilkan {start}-{end} dari {count} anggota · Halaman {page} dari {pages}":
+    "Showing {start}-{end} of {count} members · Page {page} of {pages}",
+  "Menampilkan {start}-{end} dari {count} transaksi · Halaman {page} dari {pages}":
+    "Showing {start}-{end} of {count} transactions · Page {page} of {pages}",
   "{kind} Rp{amount} untuk {name} berhasil. Referensi: {reference}":
     "{kind} of IDR {amount} for {name} completed. Reference: {reference}",
   "Pengajuan PJ-{id} diterima dan menunggu keputusan Supervisor.":
