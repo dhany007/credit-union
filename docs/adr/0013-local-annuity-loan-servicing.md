@@ -14,6 +14,7 @@ Follow the Final Local Implementation Decisions in [the tech plan](../tech-plan-
 
 - Six lending tables plus immutable loan_interest_policies; retain legacy application identity/contracts during separation from disbursed loans.
 - Fixed monthly annuity using nominal annual bps divided by 12, half-up IDR rounding and final-principal reconciliation.
+- Minimum loan policy rate is 3% p.a. (300 bps) for both base and band rates; missing/zero/below-minimum tariff input is rejected.
 - Whole-approved-principal pricing bands selected at approval; persist policy/rate snapshots. Tariffs and approval limits are explicit owner configuration with no invented seed/default rates.
 - version_number/version_type/is_current_version identify schedules. One current version per active loan, preserved old financial history; restructuring commands deferred.
 - Seven audit fields on every table with truthful nullable legacy/system attribution. Operational soft-delete predicates have explicit financial-history/replay/job exceptions.

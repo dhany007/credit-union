@@ -1,6 +1,6 @@
 # Tech Plan - Phase 2 Acceptance and Phase 3 Lending Lifecycle
 
-Status: Phase 2 locally accepted; Phase 3 finalized for local backend-first implementation on 2026-11-10.
+Status: Phase 2 locally accepted; Phase 3 backend implemented and verified locally on 2026-11-10. Frontend implementation remains pending. See testing/phase-3-backend.tdd.md and deployment/phase-3-loans.md.
 Date: 2026-11-09
 Updated: 2026-11-10 (annuity, schedule versions, and audit discussion).
 Repository baseline: main 38b4be1 (clean at inspection).
@@ -17,7 +17,7 @@ Implement backend first on the existing PR branch in commits separate from plann
 ### Pricing and calculation contract
 
 - One regular loan product; fixed annuity. Monthly nominal rate = annual_rate_bps / 10000 / 12. Store the nominal convention; do not label this input as an effective annual yield.
-- Supervisor configures immutable loan_interest_policies: required base_rate_bps, complete bands, effective_date, reason and expected_latest_id. Rate bounds are 0..10000 bps (technical ceiling, not a selected commercial tariff). Principal amounts obey config.MaxAmount; tenor is 1..120 months.
+- Supervisor configures immutable loan_interest_policies: required base_rate_bps, complete bands, effective_date, reason and expected_latest_id. Rate bounds are 300..10000 bps (minimum 3% p.a., set by the owner) (technical ceiling, not a selected commercial tariff). Principal amounts obey config.MaxAmount; tenor is 1..120 months.
 - Policy dates must be tomorrow or later in Asia/Jakarta. Select latest effective_date not after approval date, then greatest ID for that date; pending versions may be superseded with history retained.
 - Inclusive lower/exclusive upper amount bands apply one rate to the entire approved principal; explicit fallback base handles gaps. Policy writes serialize and require idempotency.
 - Actual tariffs and thresholds are operational configuration entered by the owner as Supervisor, not hardcoded product decisions. No bank rates or invented default policy are seeded. Missing effective configuration blocks priced approval/payout; it does not block implementation.
@@ -829,3 +829,7 @@ A payment may generate more than two journal lines when cash is allocated betwee
 - Implement contract/auth/validation tests for these endpoints and compatibility tests for legacy /loans. Add database integration coverage for policy changes, stale revisions, same-key replay, cross-key payout duplicates, concurrent payments, rollback and historical reads.
 
 This is an explicit proposed API contract inventory. Payout-evidence shape, final account mappings and configured tariffs must be finalized before the affected financial endpoints can be enabled.
+
+## Minimum loan tariff decision (2026-11-10)
+
+Owner selected a minimum annual nominal loan rate of 3% (300 bps) for both the global fallback and every amount band. Reject missing/null/zero/below-minimum rates with HTTP 400. Require an explicit bands array (empty is permitted for base-only policies). Enforce the floor on stored policies and approved/version snapshots. This is a lower bound, not an automatically seeded tariff. The generic calculator retains zero-rate arithmetic coverage, but loan policies cannot select it. Savings rates are unaffected.

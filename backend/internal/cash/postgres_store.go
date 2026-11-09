@@ -18,12 +18,21 @@ func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore { return &PostgresStore
 // MemberBalance locks and reads a member balance inside the caller transaction.
 func (s *PostgresStore) MemberBalance(ctx context.Context, tx pgx.Tx, id int64) (int64, error) {
 	var balance int64
-	err := tx.QueryRow(ctx, `SELECT balance FROM members WHERE id=$1 FOR UPDATE`, id).Scan(&balance)
+	err := tx.QueryRow(ctx, `SELECT balance FROM members WHERE id=$1 AND is_active AND deleted_at IS NULL FOR UPDATE`, id).
+		Scan(&balance)
 	return balance, err
 }
 
 // LockBranch serializes cash writers at one servicing KCP.
 func (s *PostgresStore) LockBranch(ctx context.Context, tx pgx.Tx, id int) error {
+	var active bool
+	if err := tx.QueryRow(ctx, `SELECT is_active AND deleted_at IS NULL FROM branches WHERE id=$1 FOR SHARE`, id).
+		Scan(&active); err != nil {
+		return err
+	}
+	if !active {
+		return fmt.Errorf("servicing KCP is inactive")
+	}
 	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(100,$1)`, id)
 	return err
 }
@@ -87,7 +96,7 @@ func (s *PostgresStore) History(ctx context.Context, id int64) ([]Transaction, e
 	rows, err := s.pool.Query(ctx, `
  SELECT t.id,t.kind,t.amount,t.note,t.created_at,b.name,COALESCE(u.name,'System'),t.balance_before,t.balance_after
  FROM transactions t JOIN branches b ON b.id=t.branch_id LEFT JOIN users u ON u.id=t.actor_id
- WHERE member_id=$1 ORDER BY t.created_at DESC LIMIT 100`, id)
+ WHERE member_id=$1 AND t.kind IN ('deposit','withdrawal','interest_credit') ORDER BY t.created_at DESC LIMIT 100`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +124,7 @@ func (s *PostgresStore) History(ctx context.Context, id int64) ([]Transaction, e
 
 // Branches lists the configured service branches.
 func (s *PostgresStore) Branches(ctx context.Context) ([]Branch, error) {
-	rows, err := s.pool.Query(ctx, `SELECT id,name FROM branches ORDER BY id`)
+	rows, err := s.pool.Query(ctx, `SELECT id,name FROM branches WHERE is_active AND deleted_at IS NULL ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -144,8 +153,11 @@ func (s *PostgresStore) List(ctx context.Context, accountNumber string) ([]Liste
     `
 	var args []any
 	if accountNumber != "" {
-		query += ` WHERE m.account_number=$1`
+		query += ` WHERE m.account_number=$1 AND t.kind IN ('deposit','withdrawal','interest_credit')`
 		args = append(args, accountNumber)
+	}
+	if accountNumber == "" {
+		query += ` WHERE t.kind IN ('deposit','withdrawal','interest_credit')`
 	}
 	query += ` ORDER BY t.created_at DESC,t.id DESC LIMIT 100`
 	rows, err := s.pool.Query(ctx, query, args...)

@@ -18,8 +18,9 @@ func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore { return &PostgresStore
 func (s *PostgresStore) RelationshipsExist(ctx context.Context, tx pgx.Tx, input Input) (bool, error) {
 	var exists bool
 	err := tx.QueryRow(ctx, `
- SELECT EXISTS(SELECT 1 FROM members WHERE id=$1)
- AND EXISTS(SELECT 1 FROM branches WHERE id=$2)`, input.MemberID, input.Responsible).Scan(&exists)
+ SELECT EXISTS(SELECT 1 FROM members WHERE id=$1 AND is_active AND deleted_at IS NULL)
+ AND EXISTS(SELECT 1 FROM branches WHERE id=$2 AND is_active AND deleted_at IS NULL)`,
+		input.MemberID, input.Responsible).Scan(&exists)
 	return exists, err
 }
 
@@ -27,7 +28,8 @@ func (s *PostgresStore) RelationshipsExist(ctx context.Context, tx pgx.Tx, input
 func (s *PostgresStore) Insert(ctx context.Context, tx pgx.Tx, actor auth.Actor, input Input) (int64, error) {
 	var id int64
 	err := tx.QueryRow(ctx, `
- INSERT INTO loans(member_id,receiving_branch_id,responsible_branch_id,created_by,amount,tenor_months,purpose,risk)
+ INSERT INTO loan_applications(member_id,receiving_branch_id,responsible_branch_id,created_by,amount,
+tenor_months,purpose,risk)
  VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`, input.MemberID, actor.BranchID, input.Responsible,
 		actor.ID, input.Amount, input.Tenor, input.Purpose, input.Risk).Scan(&id)
 	return id, err
@@ -37,15 +39,21 @@ func (s *PostgresStore) Insert(ctx context.Context, tx pgx.Tx, actor auth.Actor,
 func (s *PostgresStore) Lock(ctx context.Context, tx pgx.Tx, id int64) (LockedApplication, error) {
 	var item LockedApplication
 	err := tx.QueryRow(ctx, `
- SELECT amount,created_by,product,risk,status FROM loans WHERE id=$1 FOR UPDATE`, id).Scan(
-		&item.Amount, &item.Creator, &item.Product, &item.Risk, &item.Status)
+ SELECT amount,created_by,product,risk,status,member_id,responsible_branch_id,tenor_months,
+ approved_amount,approved_tenor_months,loan_interest_policy_id,approved_interest_rate_bps,
+ approval_revision,decision_by,decided_at FROM loan_applications WHERE id=$1 AND is_active AND
+deleted_at IS NULL FOR UPDATE`, id).Scan(
+		&item.Amount, &item.Creator, &item.Product, &item.Risk, &item.Status,
+		&item.MemberID, &item.Responsible, &item.Tenor, &item.ApprovedAmount, &item.ApprovedTenor,
+		&item.PolicyID, &item.Rate, &item.Revision, &item.DecisionBy, &item.DecidedAt)
 	return item, err
 }
 
 // Decide records one permitted application decision.
 func (s *PostgresStore) Decide(ctx context.Context, tx pgx.Tx, id, actorID, limit int64, input Decision) error {
 	_, err := tx.Exec(ctx, `
- UPDATE loans SET status=$1,decision_by=$2,decision_reason=$3,authority_limit=$4,decided_at=now()
+ UPDATE loan_applications SET status=$1,decision_by=$2,decision_reason=$3,authority_limit=$4,
+decided_at=now()
  WHERE id=$5`, input.Decision, actorID, input.Reason, limit, id)
 	return err
 }
@@ -55,10 +63,10 @@ func (s *PostgresStore) List(ctx context.Context) ([]Application, error) {
 	rows, err := s.pool.Query(ctx, `
  SELECT l.id,l.member_id,m.name,l.amount,l.tenor_months,l.purpose,l.risk,l.status,
  b.name,l.responsible_branch_id,rb.name,l.created_at,COALESCE(l.decision_reason,''),COALESCE(du.name,'')
- FROM loans l JOIN members m ON m.id=l.member_id
+ FROM loan_applications l JOIN members m ON m.id=l.member_id
  JOIN branches b ON b.id=l.receiving_branch_id JOIN branches rb ON rb.id=l.responsible_branch_id
  LEFT JOIN users du ON du.id=l.decision_by
- ORDER BY l.id DESC LIMIT 100`)
+ WHERE l.is_active AND l.deleted_at IS NULL ORDER BY l.id DESC LIMIT 100`)
 	if err != nil {
 		return nil, err
 	}

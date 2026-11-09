@@ -12,6 +12,8 @@ import (
 
 // RegisterRoutes registers loan routes with the staff authorization guards.
 func RegisterRoutes(r gin.IRouter, service *Service, guard *auth.Handler) {
+	registerPricingRoutes(r, service, guard)
+	registerAccountRoutes(r, service, guard)
 	httpapi.GET(r, "/loans", guard.Require(), func(c *gin.Context) {
 		rows, err := service.List(c.Request.Context())
 		if err != nil {

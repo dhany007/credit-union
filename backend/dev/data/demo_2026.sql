@@ -39,7 +39,7 @@ BEGIN
  IF EXISTS(SELECT 1 FROM interest_policies) THEN
   RAISE EXCEPTION 'Seed before savings interest activation is configured';END IF;
  IF EXISTS(SELECT 1 FROM members) OR EXISTS(SELECT 1 FROM transactions)
- OR EXISTS(SELECT 1 FROM journal_lines) OR EXISTS(SELECT 1 FROM loans)
+ OR EXISTS(SELECT 1 FROM journal_lines) OR EXISTS(SELECT 1 FROM loans) OR EXISTS(SELECT 1 FROM loan_applications)
  OR EXISTS(SELECT 1 FROM requests) THEN
   RAISE EXCEPTION 'Refusing nonempty financial data; this local fixture never deletes, replaces, or mixes existing data';
  END IF;
@@ -153,7 +153,7 @@ SELECT to_char(created_at,'YYYY-MM') AS period_month,count(*) transactions,
   IF EXISTS(SELECT 1 FROM interest_policies) THEN
    RAISE EXCEPTION 'Seed before savings interest activation is configured';END IF;
   IF EXISTS(SELECT 1 FROM members) OR EXISTS(SELECT 1 FROM transactions)
-  OR EXISTS(SELECT 1 FROM journal_lines) OR EXISTS(SELECT 1 FROM loans) OR EXISTS(SELECT 1 FROM requests) THEN
+  OR EXISTS(SELECT 1 FROM journal_lines) OR EXISTS(SELECT 1 FROM loans) OR EXISTS(SELECT 1 FROM loan_applications) OR EXISTS(SELECT 1 FROM requests) THEN
    RAISE EXCEPTION 'Financial data changed after preview; refusing to mix data';END IF;
   FOR r IN SELECT p.*,s.branch_id,s.actor_id FROM demo_members_plan p
    JOIN demo_staff s ON s.ordinal=p.home_staff ORDER BY p.ordinal LOOP

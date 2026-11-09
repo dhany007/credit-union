@@ -46,9 +46,11 @@ func (s *Service) closeDay(ctx context.Context, date time.Time) error {
 	cutoff := date.AddDate(0, 0, 1)
 	rows, err := tx.Query(ctx, `SELECT m.id,m.balance-COALESCE((
  SELECT sum(CASE WHEN t.kind='withdrawal' THEN -t.amount ELSE t.amount END)
- FROM transactions t WHERE t.member_id=m.id AND t.created_at >= $1),0)
+ FROM transactions t WHERE t.kind IN ('deposit','withdrawal','interest_credit') AND t.member_id=m.id AND
+t.created_at >= $1),0)
  FROM members m WHERE EXISTS(
- SELECT 1 FROM transactions opening WHERE opening.member_id=m.id AND opening.kind='deposit' AND opening.created_at<$1)
+ SELECT 1 FROM transactions opening WHERE opening.member_id=m.id AND opening.kind='deposit' AND
+opening.created_at<$1)
  ORDER BY m.id`, cutoff)
 	if err != nil {
 		return err

@@ -83,7 +83,8 @@ func TestSavingsAccountConcurrentAllocation(t *testing.T) {
 				actor = "teller.b"
 			}
 			payload := fmt.Sprintf(
-				`{"nik":"327101010195%04d","name":"Concurrent Account","phone":"08123456789","address":"Synthetic address only"}`,
+				`{"nik":"327101010195%04d","name":"Concurrent Account","phone":"08123456789",
+"address":"Synthetic address only"}`,
 				i+10,
 			)
 			results <- f.call(actor, "POST", "/api/members", fmt.Sprintf("account-concurrent-%04d", i), payload)
@@ -123,11 +124,16 @@ func TestSavingsAccountMigrationBackfill(t *testing.T) {
 		var result string
 		err := f.db.QueryRow(ctx, `
             SELECT jsonb_build_object(
-                'members',(SELECT jsonb_agg(to_jsonb(m)-'account_number' ORDER BY id) FROM members m),
-                'transactions',(SELECT jsonb_agg(to_jsonb(t)-'balance_before'-'balance_after' ORDER BY id)
+                'members',(SELECT jsonb_agg(to_jsonb(m)-'account_number' - ARRAY['is_active',
+'created_by','updated_by','updated_at','deleted_by','deleted_at'] ORDER BY id) FROM members m),
+                'transactions',(SELECT jsonb_agg(to_jsonb(t)-'balance_before'-'balance_after' -
+ARRAY['is_active','created_by','updated_by','updated_at','deleted_by','deleted_at'] ORDER BY id)
                     FROM transactions t),
-                'journal',(SELECT jsonb_agg(j ORDER BY transaction_id,line_no) FROM journal_lines j),
-                'requests',(SELECT jsonb_agg(r ORDER BY user_id,request_key) FROM requests r)
+                'journal',(SELECT jsonb_agg(to_jsonb(j) - ARRAY['is_active','created_by','updated_by',
+'updated_at','deleted_by','deleted_at']-'created_at' ORDER BY transaction_id,line_no) FROM journal_lines
+j),
+                'requests',(SELECT jsonb_agg(to_jsonb(r) - ARRAY['is_active','created_by','updated_by',
+'updated_at','deleted_by','deleted_at'] ORDER BY user_id,request_key) FROM requests r)
             )::text`).Scan(&result)
 		if err != nil {
 			t.Fatal(err)
@@ -141,6 +147,13 @@ func TestSavingsAccountMigrationBackfill(t *testing.T) {
 	if snapshot() != before {
 		t.Fatal("migration changed existing membership or financial data")
 	}
+	var wrong int
+	if err := f.db.QueryRow(ctx, `SELECT count(*) FROM transactions t JOIN journal_lines j ON j.transaction_id=t.id
+ WHERE t.created_by IS DISTINCT FROM t.actor_id OR j.created_by IS DISTINCT FROM t.actor_id
+ OR j.created_at IS DISTINCT FROM t.created_at`).Scan(&wrong); err != nil || wrong != 0 {
+		t.Fatal("migration lost known audit attribution", err)
+	}
+
 	readAccounts := func() []string {
 		t.Helper()
 		var accounts []string

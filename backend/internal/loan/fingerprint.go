@@ -20,6 +20,10 @@ type legacyDecision struct {
 	Reason   string `json:"reason"`
 }
 
-func fingerprintDecision(input Decision) legacyDecision {
-	return legacyDecision(input)
+func fingerprintDecision(input Decision) any {
+	if input.ApprovedAmount != 0 || input.ApprovedTenor != 0 || input.ExpectedPolicyID != 0 ||
+		input.ExpectedRate != nil || input.ExpectedRevision != 0 {
+		return input
+	}
+	return legacyDecision{Decision: input.Decision, Reason: input.Reason}
 }
