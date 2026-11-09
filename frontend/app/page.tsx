@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   Building2,
   Check,
+  ChevronLeft,
   ChevronRight,
   CircleHelp,
   CreditCard,
@@ -109,6 +110,7 @@ const riskLabels: Record<string, MessageKey> = {
   medium: "Sedang",
   high: "Tinggi",
 };
+const TABLE_PAGE_SIZE = 20;
 const selectClass = "h-10 w-full rounded-md border bg-card px-3 text-sm";
 const statuses: Record<string, MessageKey> = {
   submitted: "Menunggu keputusan",
@@ -134,12 +136,21 @@ export default function Home() {
     : [];
   const [search, setSearch] = useState(""),
     [query, setQuery] = useState(""),
+    [memberPage, setMemberPage] = useState(1),
     [newMember, setNewMember] = useState(false);
   const [error, setError] = useState(""),
     [success, setSuccess] = useState<Notice | null>(null),
     [busy, setBusy] = useState(false);
   const isCash = tab === "deposit" || tab === "withdrawal";
   const cashKind = tab === "withdrawal" ? "withdrawal" : "deposit";
+  const memberPageCount = Math.max(1, Math.ceil(members.length / TABLE_PAGE_SIZE));
+  const currentMemberPage = Math.min(memberPage, memberPageCount);
+  const visibleMembers = members.slice(
+    (currentMemberPage - 1) * TABLE_PAGE_SIZE,
+    currentMemberPage * TABLE_PAGE_SIZE,
+  );
+  const memberRowStart = members.length ? (currentMemberPage - 1) * TABLE_PAGE_SIZE + 1 : 0;
+  const memberRowEnd = Math.min(currentMemberPage * TABLE_PAGE_SIZE, members.length);
   const [cashAmount, setCashAmount] = useState(""),
     [cashNote, setCashNote] = useState(""),
     [confirmCash, setConfirmCash] = useState(false);
@@ -587,6 +598,7 @@ export default function Home() {
                           }>("/members", input);
                           setQuery("");
                           setSearch("");
+                          setMemberPage(1);
                           const currentMembers = await refresh("");
                           const current =
                             currentMembers.find(
@@ -689,6 +701,7 @@ export default function Home() {
                         e.preventDefault();
                         setQuery(search);
                         setSelected(null);
+                        setMemberPage(1);
                       }}
                     >
                       <Search
@@ -723,7 +736,7 @@ export default function Home() {
                         </tr>
                       </thead>
                       <tbody>
-                        {members.map((m) => (
+                        {visibleMembers.map((m) => (
                           <tr
                             key={m.id}
                             className={cn(
@@ -773,6 +786,39 @@ export default function Home() {
                         )}
                       </tbody>
                     </table>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t px-5 py-4 text-xs text-muted-foreground">
+                    <p role="status">
+                      {t("Menampilkan {start}-{end} dari {count} anggota · Halaman {page} dari {pages}", {
+                        start: memberRowStart,
+                        end: memberRowEnd,
+                        count: members.length,
+                        page: currentMemberPage,
+                        pages: memberPageCount,
+                      })}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={currentMemberPage <= 1}
+                        onClick={() => setMemberPage(currentMemberPage - 1)}
+                      >
+                        <ChevronLeft aria-hidden="true" size={14} />
+                        {t("Sebelumnya")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={currentMemberPage >= memberPageCount}
+                        onClick={() => setMemberPage(currentMemberPage + 1)}
+                      >
+                        {t("Berikutnya")}
+                        <ChevronRight aria-hidden="true" size={14} />
+                      </Button>
+                    </div>
                   </div>
                 </Card>
                 <Card>
@@ -850,8 +896,8 @@ export default function Home() {
             </>
           )}
           {isCash && (
-            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,440px)_1fr]">
-              <Card>
+            <div className="grid max-w-4xl items-start gap-6">
+              <Card className="w-full max-w-[440px]">
                 <CardContent className="pt-6">
                   <form
                     className="mb-6 grid gap-3"
@@ -1011,7 +1057,11 @@ export default function Home() {
                   </div>
                 </CardContent>
               </Card>
-              <History rows={history} selected={!!selected} />
+              <History
+                key={`${selected ?? "none"}-${history[0]?.reference ?? "empty"}`}
+                rows={history}
+                selected={!!selected}
+              />
             </div>
           )}
           {tab === "interest" && user.role === "supervisor" && <InterestSettings key={user.id} />}
@@ -1344,12 +1394,24 @@ function History({
   selected: boolean;
 }) {
   const { t, money, date } = usePreferences();
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(rows.length / TABLE_PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const visibleRows = rows.slice(
+    (currentPage - 1) * TABLE_PAGE_SIZE,
+    currentPage * TABLE_PAGE_SIZE,
+  );
+  const rowStart = rows.length ? (currentPage - 1) * TABLE_PAGE_SIZE + 1 : 0;
+  const rowEnd = Math.min(currentPage * TABLE_PAGE_SIZE, rows.length);
   return (
     <Card className="gap-0 overflow-hidden py-0">
       <div className="border-b p-5">
         <h2 className="text-sm font-semibold">{t("Riwayat transaksi")}</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           {t("Transaksi simpanan terbaru pada rekening anggota")}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t("Maksimal 100 transaksi terbaru")}
         </p>
       </div>
       {rows.length === 0 ? (
@@ -1361,7 +1423,7 @@ function History({
         </div>
       ) : (
         <div className="divide-y">
-          {rows.map((transaction) => (
+          {visibleRows.map((transaction) => (
             <div key={transaction.reference} className="flex gap-3 p-5">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary">
                 {transaction.kind !== "withdrawal" ? (
@@ -1400,6 +1462,41 @@ function History({
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {rows.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t px-5 py-4 text-xs text-muted-foreground">
+          <p role="status">
+            {t("Menampilkan {start}-{end} dari {count} transaksi · Halaman {page} dari {pages}", {
+              start: rowStart,
+              end: rowEnd,
+              count: rows.length,
+              page: currentPage,
+              pages: pageCount,
+            })}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={currentPage <= 1}
+              onClick={() => setPage(currentPage - 1)}
+            >
+              <ChevronLeft aria-hidden="true" size={14} />
+              {t("Sebelumnya")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={currentPage >= pageCount}
+              onClick={() => setPage(currentPage + 1)}
+            >
+              {t("Berikutnya")}
+              <ChevronRight aria-hidden="true" size={14} />
+            </Button>
+          </div>
         </div>
       )}
     </Card>
