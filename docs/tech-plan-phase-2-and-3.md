@@ -1,9 +1,86 @@
 # Tech Plan - Phase 2 Acceptance and Phase 3 Lending Lifecycle
 
-Status: Phase 2 local implementation and acceptance complete; Phase 3 plan proposed.
+Status: Phase 2 locally accepted; Phase 3 finalized for local backend-first implementation on 2026-11-10.
 Date: 2026-11-09
 Updated: 2026-11-10 (annuity, schedule versions, and audit discussion).
 Repository baseline: main 38b4be1 (clean at inspection).
+
+
+## Final Local Implementation Decisions (2026-11-10)
+
+Status: Accepted for local implementation by the project owner. This section and ADR-0013 take precedence over earlier Proposed/Open wording in this document. Historical discussion remains for context. No committee, further plan sign-off or approval workshop is required to start implementation.
+
+### Fixed delivery scope
+
+Implement backend first on the existing PR branch in commits separate from planning. Preserve existing application API contracts. Deliver amount-based pricing policies, annuity previews, final-term approval, one full cash payout, initial schedules, loan reads, and scheduled repayments. Frontend follows the documented three-view Loans workspace. Initial/restructure version types are supported in the model, but only initial issuance is executable; restructuring, penalties, write-offs and arbitrary posted-entry edits are excluded.
+
+### Pricing and calculation contract
+
+- One regular loan product; fixed annuity. Monthly nominal rate = annual_rate_bps / 10000 / 12. Store the nominal convention; do not label this input as an effective annual yield.
+- Supervisor configures immutable loan_interest_policies: required base_rate_bps, complete bands, effective_date, reason and expected_latest_id. Rate bounds are 0..10000 bps (technical ceiling, not a selected commercial tariff). Principal amounts obey config.MaxAmount; tenor is 1..120 months.
+- Policy dates must be tomorrow or later in Asia/Jakarta. Select latest effective_date not after approval date, then greatest ID for that date; pending versions may be superseded with history retained.
+- Inclusive lower/exclusive upper amount bands apply one rate to the entire approved principal; explicit fallback base handles gaps. Policy writes serialize and require idempotency.
+- Actual tariffs and thresholds are operational configuration entered by the owner as Supervisor, not hardcoded product decisions. No bank rates or invented default policy are seeded. Missing effective configuration blocks priced approval/payout; it does not block implementation.
+- Save policy ID/rate and approved amount/tenor with approval_revision. Subsequent policy updates or declining outstanding principal do not reprice the approved contract.
+- New approvals must bind a reviewed preview policy ID/rate and proposed amount/tenor. Legacy approvals remain readable but cannot pay out without an explicit authorized pricing-completion/reapproval command. Extend the existing decision route to permit this only for an approved, undisbursed legacy case lacking complete pricing; preserve normal submitted-to-approved/rejected semantics and same-key replay.
+- Reapproval of a fully priced approved application is not included in the initial delivery. Changed terms require a new application; no silent modification or cancellation of an existing approval.
+- No automatic approval expiry in the initial local scope; payout always rechecks recipient, evidence, master eligibility and authority evidence.
+- Calculate with exact rational arithmetic where practical, round monthly payment and interest half-up to integer IDR, principal = rounded payment - rounded interest, and reconcile final principal exactly. Reject pathological combinations producing nonpositive principal or invalid rows rather than hiding a write-off.
+- Generate each monthly due date from the original payout day plus installment ordinal, clamping absent days to month-end. First installment is one month later. No holiday shifting or daily stub-interest adjustment in this monthly local model.
+- Actual outstanding principal = paid-out principal minus posted principal allocations (and any future authorized reversals). It is separate from contractual scheduled remaining principal.
+
+### Payout conditions and concurrency
+
+For the local backend the condition-evidence object contains required recipient_verified, agreement_signed and conditions_verified booleans, all true, plus a required verification_note of 5..500 trimmed characters. These are authorized Teller attestations persisted with actor/time and payout audit. The backend validates the existing approved contract and prerequisites independently; it never treats these booleans as substitute approval authority. File upload/document management is outside scope.
+
+Payout preview uses the current server Jakarta date and approved snapshot. Confirm using the expected approval revision, policy/rate/principal/tenor and payout date listed in the API inventory. Under locks, recompute and reject any mismatch. One application can yield one disbursed loan, enforced by database uniqueness across all record states. Cash handover follows original-reference lookup/replay on an uncertain response.
+
+Approval and payment revisions are monotonic bigint values starting at 1 for a completed approval/new loan respectively. Advance payment_revision on each successful financial/state mutation. Clients cannot set revision counters. Use the existing runner for same-key replay before applying changed-state eligibility checks.
+
+### Repayment contract
+
+Apply a receipt to installment_number ascending in the current schedule, unpaid interest then unpaid principal within each installment. Partial receipts are supported and one receipt may cover multiple installments, including future scheduled installments; the preview explicitly shows allocations before confirmation.
+
+Reject nonpositive receipts and amounts greater than total remaining scheduled principal plus interest. There is no automatic early-settlement interest rebate, fee or penalty in this local implementation; paying future installments pays their contractual scheduled interest. A special early-settlement/waiver workflow remains excluded.
+
+A loan becomes paid_off only when all scheduled principal and interest are satisfied. Actual principal may reach zero before all contractual interest is paid in edge cases; do not infer full closure from principal alone. Repayment preview is read-only, and confirmation rejects stale payment revision/current version rather than silently reallocating.
+
+### Final local journal model
+
+Use one centralized cooperative ledger with servicing-KCP cash dimensions and the loan's responsible KCP retained on the loan. Separately balanced KCP books and inter-KCP clearing are excluded from this local delivery.
+
+| Event | Debit | Credit |
+| --- | --- | --- |
+| Full cash disbursement | loan_principal_receivable: principal | cash at servicing KCP: principal |
+| Cash repayment | cash at servicing KCP: full receipt | loan_principal_receivable: principal allocated; loan_interest_income: interest allocated |
+
+Recognize loan interest income at receipt for this limited local model; schedules are contractual calculations and create no daily GL accrual. A repayment with both components has three journal lines; omit zero components and reconcile every line to its allocations. This is a local product/accounting decision, not a bank reporting implementation.
+
+Loan cash flows do not change member savings. Update transaction kinds and financial projections explicitly. Savings history must exclude loan postings; KCP cash includes all real cash flows. Preserve loan/member/actor references without fabricating savings before/after snapshots for loan movements.
+
+Global invariants after introducing loans:
+- Every financial transaction balances; expected account/component lines match its kind.
+- Loan principal receivable equals aggregate actual principal outstanding.
+- Loan interest income equals posted interest allocations.
+- Total cash + loan principal receivable + savings interest expense = member savings liability + loan interest income, for the restricted set of supported events.
+- Existing savings-interest daily eligibility and monthly reconciliation remain unchanged.
+
+### Audit and migration decisions
+
+Keep all seven audit columns on every table. New staff rows use server identity/timestamps; legacy unknown creators and existing constrained system actors remain nullable without invented users. Enforce existing system-actor rules and audited command writes; do not retrofit false historical attribution.
+
+Operational master/draft eligibility filters active/not-deleted records. Auth checks active sessions, users and KCPs; revoke inactive sessions. Financial history, immutable policy versions, replay, job-completion and technical bookkeeping reads retain their documented exceptions. No deletion API for posted financial facts. NIK/account uniqueness persists across deletion.
+
+Use new ordered migrations; existing migrations remain immutable. For the application-shaped loans table split, use a documented local maintenance rollout: verified backup, stop old API writers, migrate, start compatible API. Preserve application IDs/decisions/replay and validate an isolated populated restore first. This is not a rolling schema rename under old binaries.
+
+All endpoint paths, guards, bounded pagination and error semantics in the API inventory are accepted as the local implementation contract. Error assertions and conflict handling must be tested. Retain the existing approval limit fail-closed when not configured; the configuration value is not silently raised by this plan.
+
+### Execution and verification
+
+Implement/test backend in focused commits after this planning commit. Prove calculator, policy resolution, audit retrofit, legacy API compatibility, transactional payout/repayment, concurrency/replay and restored-data reconciliation. Rebuild/restart affected containers after runtime changes. Add a backend API/runbook/evidence update before completing implementation.
+
+Remaining operational inputs are the owner's configured tariffs, policy effective date and approval limit; they are required configuration, not additional design-approval gates. Excluded workflows can be designed later without blocking this local backend scope.
+
 
 ## Memory Context
 
@@ -76,7 +153,7 @@ These are additive endpoints/projections coordinated with the frontend. Preserve
 
 Resolve the following with product/accounting owners and prepare worked examples:
 
-- **OQ-009:** product pricing (annuity selected on 2026-11-10; annual rate, periodic conversion, tenor meaning, schedule, rounding, and fees remain open) and payment allocation to interest/principal/fees.
+- **OQ-009:** product pricing (annuity and amount-band policies selected; monthly conversion, rounding and initial allocation rules recorded below). Actual policy tariffs and exceptional servicing/accounting rules remain open.
 - **OQ-011:** disbursement evidence/conditions, single versus staged payout, approval expiry, and payout KCP.
 - **OQ-012:** supported late/partial/early payment, settlement, arrears, rescheduling, write-off, and closure. Explicitly block unsupported cases.
 - **OQ-006/OQ-007:** chart of accounts, loan receivable/cash mappings, and central versus KCP-balanced books/inter-KCP clearing.
@@ -228,7 +305,7 @@ All tables below also contain the seven shared audit columns. Monetary values ar
 | `decision_reason` | text NULL | Decision explanation |
 | `authority_limit` | bigint NULL | Preserve existing recorded approval authority |
 
-Preserve existing approval facts. Approval must bind the final pricing terms before payout; the representation of approved rate/method and reapproval after term changes is still an open decision.
+Preserve existing approval facts. Approval binds the final principal, tenor, dated loan-interest-policy ID and resolved rate snapshot before payout; changing material terms requires reapproval. See the Amount-Based Loan Pricing Decision below.
 
 **2. `loans`: disbursed contracts**
 
@@ -421,7 +498,7 @@ closing_principal[k] = opening_principal[k] - principal[k]
 
 For r=0, use A=P/n to avoid division by zero. With timely regular payments, scheduled principal portions increase and interest portions decrease while the unrounded regular payment stays constant. Outstanding principal decreases. Fixed-principal effective payments instead have constant principal and declining totals; flat interest uses original principal. These alternatives were discussed but are not the selected direction.
 
-Proposed conversion for monthly nominal pricing: r = annual_rate_bps / 10000 / 12. This conversion, fixed versus floating pricing, annual-rate value, day-count/stub-period rules, and payment frequency are not yet approved. Savings Actual/365 rules do not automatically apply to loans.
+Accepted for local implementation: fixed nominal annual pricing with monthly conversion r = annual_rate_bps / 10000 / 12 and monthly installments. The actual annual rates are selected from configured nominal bands. See the later pricing decision for accepted rounding/due-date/payment rules; savings Actual/365 does not apply to this loan convention.
 
 Store contractual terms as a version snapshot. Calculate using exact rational or justified high-precision decimal arithmetic, never float64 money calculations. Define rounding mode/stage and bounds before implementation. Whole-IDR schedules may require a slightly different last payment: allocate the remaining principal to the final installment so sum(principal_due)=starting_principal and the closing scheduled principal is exactly zero. Do not silently write off principal, generate negative principal, or independently round components in a way that breaks installment totals.
 
@@ -451,7 +528,72 @@ Future validation must cover:
 - Same-loan allocation validation, exact receipt/component totals, partial/advance/overpayment behavior only as approved, journal failure rollback, and immutable original payment references after correction.
 - Populated migration/restore parity for current applications, savings interest, audit history, sessions, command replay, loans and installments. Confirm all prior savings/cash reconciliation still holds.
 
-Still open: actual annual loan rate and fixed/floating policy; periodic conversion; rounding; installment frequency and first due date/month-end/stub rules; payment allocation priority; late/early/partial/advance/overpayments; fees/penalties; approval of final pricing; payout conditions/expiry; restructuring carryover/activation; loan accounting and cross-KCP balancing; system/legacy audit identity and exact technical-table retention rules. The schedule data model is not a substitute for these decisions.
+The subsequent Amount-Based Loan Pricing Decision records the latest accepted local rules and supersedes the earlier open calculation/servicing assumptions. Actual tariffs, accounting/operating controls and exceptional servicing decisions still need resolution.
+
+
+## Amount-Based Loan Pricing Decision (2026-11-10)
+
+This section supersedes earlier open assumptions about manually choosing a rate during approval. The owner selected the amount-band policy approach after reviewing bank/BPR examples. Published bank figures remain references, not an approved tariff for this cooperative: the examples include different products and flat/effective methods.
+
+### Selected pricing behavior
+
+- Supervisor maintains a separate loan interest policy with a global base rate and principal-amount bands, following the existing savings-policy versioning pattern.
+- Choose one annual rate for the entire approved principal. Do not apply progressive slices and do not use the requested amount when the approved amount differs.
+- The system resolves the policy valid at approval, selects the band, and binds the approved principal, tenor, policy ID and rate snapshot to that decision.
+- Both Teller and Supervisor see the resolved rate as read-only during approval/payout; no per-application manual override in the initial implementation. A pricing-policy change is a separate authorized action.
+- Changing approved principal or other material contractual terms invalidates the old preview and requires fresh approval and policy resolution.
+- Copy the approved snapshot into the initial schedule version at disbursement. Do not silently reprice an already approved case from a newer policy at payout; approval-expiry rules remain a separate decision.
+- The rate is fixed for that contractual version. Repayment reducing outstanding principal does not move the loan to a new pricing band.
+- New policy versions affect subsequent approvals. Restructuring/rate changes require a separately approved workflow and do not rewrite historic terms.
+- No initial bank rates, thresholds or savings rates are silently seeded. If no applicable configured policy exists, block financial approval/payout with a clear policy-required result.
+- Empty/unmatched bands use the explicitly configured base rate. Reject overlapping/invalid bands. Use inclusive lower and exclusive upper bounds; max_amount=NULL denotes no upper bound.
+
+### Additional table: loan_interest_policies
+
+The six lending tables above remain, with this seventh table added. Use complete band configuration in one JSONB policy version, as in savings interest; no separate band master or general-purpose rule engine is needed.
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint PK | Immutable policy version |
+| effective_date | date | Business date from which new approvals may use this version |
+| base_rate_bps | integer | Explicit fallback annual nominal rate in basis points |
+| bands | jsonb | Array of min_amount, max_amount (nullable), rate_bps |
+| reason | text | Explanation for policy creation |
+| shared audit columns | As defined above | Supervisor/system attribution and timestamps |
+
+Rate integers require explicit supported bounds, amount bounds must fit the existing technical ceiling, and complete policy validation precedes persistence. No negative rate/amount, reversed/zero-width band, overlap, or ambiguous boundary is permitted.
+
+Add loan_interest_policy_id and approved_interest_rate_bps to application approval storage. Add loan_interest_policy_id to schedule versions alongside the existing interest_rate_bps snapshot. Keep the policy FK and snapshot permanently readable for financial history; preserve legacy approvals without fabricating terms, and require pricing completion/reapproval before payout.
+
+### Policy lifecycle and API/frontend integration
+
+- Proposed policy editing convention: immutable versions with effective dates tomorrow or later in Asia/Jakarta, matching savings policy practice. A prior version remains resolvable for its historical approval dates.
+- Use a deterministic dated version selection and serialize concurrent policy writes; include an expected latest version and durable idempotency for policy creation.
+- Do not deactivate or soft-delete a used policy to rewrite history. Keep all seven audit columns, with financial-history query exceptions as already specified.
+- Add Supervisor-only list/create policy endpoints and a staff-authorized preview/resolution projection. Final route/request/response contracts belong to backend implementation and API review.
+- Resolve approval policy using database time and persist the snapshot atomically with the decision/audit/replay result. Guard against stale previews at approval; require review of changed terms rather than silently accepting them.
+- Add a small Supervisor pricing settings panel within the existing Loans workspace, not another top-level menu. It shows global rate, nominal bands, effective dates and version history with EN/ID and light/dark support.
+- Application review/annuity previews show approved principal, selected band, rate p.a., policy version and calculated payment. The backend remains authoritative.
+
+### Previously accepted local calculation and servicing rules
+
+The owner accepted these minimal local rules before refining the pricing source to amount bands. The amount-band decision replaces manual rate entry; the remaining accepted rules are retained:
+- Fixed annuity, annual nominal rate divided by 12 for monthly interest.
+- Whole-IDR half-up rounding with final-principal adjustment to reconcile the principal exactly.
+- Monthly due dates, first installment one month after actual disbursement; clamp missing calendar days to month-end. Anchor each installment to the original disbursement day to avoid cumulative date drift.
+- Repayment follows oldest installments first, interest then principal; partial payments are allowed.
+- No penalties or extra late-interest calculation in this initial local scope; overdue scheduled amounts remain payable.
+- Reject money exceeding the remaining supported scheduled payable amount. Early-settlement discounts/interest waivers and other special treatments remain unimplemented until separately approved.
+- One full cash disbursement per approved application.
+- Prepare the versioned data model but defer restructuring commands until carryover/approval rules are agreed.
+
+Here annual nominal rate/12 is the contractual convention, not a claim that a bank's quoted effective annual rate has the same periodic conversion. Label/store the convention consistently and do not import flat or effective bank tariffs without an explicit product decision.
+
+### Pricing validation and unresolved decisions
+
+Add focused tests for each exact nominal boundary, whole-principal rate selection, fallback, malformed/overlapping bands, changing approved amount, future/dated policy selection, simultaneous policy writes, stale previews, approval snapshots, idempotent policy/approval commands, and unchanged rates after repayments or later policy changes.
+
+The approved design requires configuration, but the actual nominal thresholds, annual rates and base rate for this cooperative are still unspecified. Keep payout fail-closed until an explicit policy is saved. Account mappings, cross-KCP accounting, payout evidence/approval expiry, system/legacy audit attribution, restructuring carryover and exceptional early-settlement treatments remain separate open decisions.
 
 ## Frontend Technical Plan - Phase 3 (2026-11-10)
 
@@ -501,7 +643,7 @@ flowchart TD
 - Show application reference, member/account, requested/approved principal and tenor, receiving/responsible KCP, status and decision.
 - Teller form: member, requested amount, tenor, purpose, responsible KCP, and risk according to existing permissions.
 - Supervisor review: application facts, analysis/reason, applicable authority, final principal/rate/annuity/tenor/due-date terms, and authoritative schedule preview.
-- Final pricing field ownership and persistence are an open backend/product decision. Do not expose unrestricted Teller rate edits or derive authority solely from the Supervisor role.
+- Resolve the rate from the dated amount-band loan policy and show it read-only with its policy/version reference. Supervisor manages the policy separately; no per-application rate override is planned. Do not derive approval authority solely from the Supervisor role.
 - Approval/rejection includes confirmation, reason and submitting state. Preserve entered values after recoverable failures; display field errors near their inputs.
 - After approval, offer navigation to the payout case; do not enable payout solely from a browser status label.
 
@@ -572,3 +714,118 @@ Follow the current Next.js Client Component, api helper, preferences provider, s
 7. Rebuild and restart the affected Docker service after implementation changes, as requested by the owner. Verify health and homepage, then inspect the actual application flows. This documentation-only update has no runtime image changes.
 
 No frontend code or tests are changed or executed by this planning update. Navigation and screen organization above are proposed; unresolved financial policies are still implementation blockers.
+
+## Application Schedule Preview API (2026-11-10)
+
+The application form must offer an authenticated, read-only-in-effect schedule preview before submitting an application.
+
+### Endpoint and request
+
+POST /api/loans/preview; permitted to Teller and Supervisor with the existing session, same-origin and strict request-body guards. POST is used for structured calculation inputs; it does not create domain or financial records and requires no financial Idempotency-Key.
+
+Example request (illustrative amount/tenor/date, not an approved tariff):
+
+```json
+{
+  "amount": 15000000,
+  "tenor_months": 12,
+  "expected_disbursement_date": "2026-11-15"
+}
+```
+
+The client does not provide rate, policy ID, schedule amounts or actor/KCP. Resolve the currently effective policy using the database approval/preview business date in Asia/Jakarta and the requested principal. The expected payout date supplies the due-date anchor; it does not select a future policy. Validate positive integer IDR amount within technical/product/authority-independent preview bounds, supported monthly tenor, strict YYYY-MM-DD date, and no past payout date. Product date limits must be explicit in implementation. A preview does not grant approval authority.
+
+### Response
+
+Return 200 with:
+- amount, tenor_months, interest_method=annuity, annual_rate_bps, policy_id, matched band or explicit base-rate fallback, expected_disbursement_date, time_zone=Asia/Jakarta, and calculated_at.
+- regular_installment_amount, total_principal, total_interest, total_payable. The final installment may differ because of the accepted final-principal rounding adjustment.
+- installments array: installment_number, due_date, opening_principal, principal_due, interest_due, total_due, closing_principal.
+- Explicit estimate semantics so consumers do not present a preview as an approved contract or actual payment receipt.
+
+All money fields are integer rupiah. Totals must equal the returned rows, sum(principal_due)=amount, and the final closing_principal must be zero. Use the same backend annuity/due-date/rounding calculator for preview and final schedule creation; no independent frontend calculation.
+
+### Lifecycle, errors and frontend behavior
+
+- Resolve policy and read its complete immutable configuration in one consistent operation. Missing eligible policy or disallowed calculation returns a safe 422; malformed/range/date input returns 400; missing session 401; forbidden role/origin 403; transient infrastructure failure 503 and unexpected failure sanitized 500, following existing fault/httpapi mapping.
+- Preview is bounded by supported tenor and request size. Honor request cancellation and database timeouts; log safe operation/error context without raw member/payload data.
+- Store no application, version, installment, financial posting, audit mutation or command-replay result for preview. Normal request logs remain permitted.
+- Recalculate when amount, tenor or expected payout date changes; abort/ignore obsolete requests and invalidate previous preview/confirmation immediately.
+- Render summary and full schedule with EN/ID, light/dark, loading/empty/error/retry states, and explicit estimate labeling.
+- At approval, resolve policy again and bind the approved terms/snapshot. A stale preview cannot silently authorize changed pricing; use an expected-policy/terms reference in the future approval contract and return 409 for stale terms that require review.
+- At disbursement, use the approved rate snapshot and actual payout date, revalidate conditions, and generate/persist the final initial schedule atomically with payout. If the date differs from the estimate, require Teller review of the refreshed final preview before confirming; its exact confirmation-token/expected-date binding must be specified with the payout endpoint.
+- Additive API: existing POST /api/loans and list/decision behavior remain compatible.
+
+### Validation targets
+
+Test role/origin/session guards, strict body decoding, unavailable policy, every nominal band boundary/fallback, policy changes between preview and approval, zero rate, rounding/final installment reconciliation, month-end/leap-year due dates, date validation, cancellation, and no financial/domain/replay writes. Prove preview and final schedule match when approved terms and payout date are identical.
+
+## Phase 3 API Inventory and Contracts (proposed, 2026-11-10)
+
+All paths below include /api. This inventory supplements the detailed application preview contract. Preserve existing session cookies, origin checks, strict decoding, fault/error responses and caller-owned command transactions.
+
+### Existing application compatibility
+
+| Method and path | Role | Contract |
+| --- | --- | --- |
+| GET /api/loans | Staff | Preserve existing latest-100 application array contract for the current frontend |
+| POST /api/loans | Teller | Preserve intake fields and idempotent application creation; no financial posting |
+| POST /api/loans/:id/decision | Supervisor within authority | Preserve approve/reject and reason behavior. Extend approval with explicit final principal/tenor and expected pricing/approval revision; resolved policy/rate are server-owned. Legacy approvals lacking full pricing evidence remain non-disbursable until completed/reapproved |
+| POST /api/loans/preview | Teller, Supervisor | Detailed estimate contract in the preceding section |
+
+A completed approval needs a monotonically increasing approval_revision and a complete approved-terms snapshot. Add the required persistence fields in the forward migration; updated_at alone is not the financial concurrency token. Reapproval must remain blocked once a linked disbursement exists. Design/test the explicit completion/reapproval transition without relaxing existing approval authority.
+
+### Policy and application endpoints
+
+| Method and path | Role | Request and result |
+| --- | --- | --- |
+| GET /api/loan-interest/policies | Supervisor | Bounded/paginated policy history: id, effective_date, base_rate_bps, bands, reason and safe audit attribution |
+| POST /api/loan-interest/policies | Supervisor | Idempotency-Key; effective_date, base_rate_bps, bands[{min_amount,max_amount,rate_bps}], reason, expected_latest_id. Return persisted immutable policy version |
+| GET /api/loan-applications | Staff | New paginated collection: optional exact account/application reference, status, responsible_branch_id and payout_pending; return application summaries and next_cursor |
+| GET /api/loan-applications/:id | Staff | Detail with requested/approved terms, approval_revision, policy/rate snapshot, decision/authority attribution, receiving/responsible KCP, linked loan reference and authoritative payout eligibility/reasons |
+
+Policy creation follows the prospective version/validation rules above. Same-date supersession, if supported like savings policies, must retain all rows and resolve greatest effective date then greatest ID. Reject stale expected_latest_id with 409. No arbitrary historical policy editing/deletion route.
+
+### Disbursement endpoints
+
+| Method and path | Role | Request and result |
+| --- | --- | --- |
+| POST /api/loan-applications/:id/disbursement-preview | Teller | Read-only-in-effect; expected_approval_revision. Server uses current Jakarta payout date, approved rate snapshot and approved terms; return final schedule, amount, servicing KCP, cash/condition eligibility, approval revision and payout_date |
+| POST /api/loan-applications/:id/disburse | Teller | Idempotency-Key; expected_approval_revision, expected_policy_id, expected_rate_bps, expected_principal, expected_tenor_months, expected_payout_date, verified-condition evidence (final shape pending SOP), optional bounded note. Recompute and compare all expected terms/date under locks; return loan_id, loan_number, application_id, reference, amount, disbursed_at and initial_schedule_version_id |
+
+Expected fields are concurrency/review assertions, never client authority to choose pricing/KCP/timestamps. Missing/changed approval, a date boundary, changed payout terms, or an already-linked payout produces a safe conflict or eligibility rejection. Read/replay the original committed outcome for the same key before checking current business state. Cross-key duplicate payout is blocked by unique application linkage.
+
+The final condition-evidence fields and account mappings remain open; do not implement payout using a generic client boolean as proof of all prerequisites. No separate receipt-writing command: receipt/reprint reads the committed detail and financial reference.
+
+### Loan accounts, versions and payment endpoints
+
+Use loan-accounts to distinguish actual disbursed loans from the legacy /loans application contract.
+
+| Method and path | Role | Request and result |
+| --- | --- | --- |
+| GET /api/loan-accounts | Staff | Paginated active/paid_off loans; optional exact account_number, loan_number, status, responsible_branch_id. Return actual principal outstanding, original principal, KCP and current version summary |
+| GET /api/loan-accounts/:id | Staff | Loan summary, actual principal outstanding, approved/version terms, payout reference/actor/KCP/time, payment eligibility and safe audit attribution |
+| GET /api/loan-accounts/:id/schedule-versions | Staff | Paginated versions with version_number, version_type, is_current_version, effective_date, terms, reason and approval attribution, including superseded historical versions |
+| GET /api/loan-accounts/:id/installments | Staff | Paginated schedule rows; optional schedule_version_id defaults to current. Validate version ownership; return contractual amounts and separate actual paid/unpaid allocations. Preserve historical-version access |
+| GET /api/loan-accounts/:id/repayments | Staff | Paginated committed receipts with amount, principal/interest totals, allocations, actor, servicing KCP, timestamp and financial reference |
+| POST /api/loan-accounts/:id/repayment-preview | Teller | Read-only-in-effect; amount. Return oldest-first interest/principal allocations, total, outstanding payable, proposed principal after receipt and expected_payment_revision/current_schedule_version_id |
+| POST /api/loan-accounts/:id/repayments | Teller | Idempotency-Key; amount, expected_payment_revision, expected_schedule_version_id, optional bounded note. Under loan lock, revalidate eligibility and recompute allocation; return repayment_id, repayment_number, reference, allocations, principal_before/after, paid_at and resulting loan status |
+
+Add a monotonic payment_revision (or equivalent explicit loan revision) to the loan row and advance it atomically on every relevant financial/state change. A stale payment preview returns 409 and requires review; it must not silently accept a different allocation. Current schedule changes invalidate the preview. Inputs cannot set actor, servicing KCP, posting time, principal/interest components or allocation schedule IDs.
+
+A payment may generate more than two journal lines when cash is allocated between principal and interest; do not apply the savings-only two-line invariant blindly. Final loan accounting recognition and account mappings remain approval gates. Reconciliation must match journal components, allocations, receipt amount and principal projections.
+
+### Shared API guarantees
+
+- Existing mutation commands retain 200/replay behavior. New successful commands/previews return 200; read collections return {items,next_cursor}. No writes on GET or preview.
+- Every new list uses a fixed bounded page size of 20 and stable deterministic ordering with an opaque validated scope-bound cursor. Do not inherit the legacy latest-100 cap for new collections. Unknown valid filters return an empty collection; malformed filters/cursors return 400. Each page rechecks authorization.
+- Cursor order for time-based lists is descending created_at/id; installments use installment_number/id within one version, versions use version_number/id within one loan. Freeze filter scope across cursor requests.
+- Apply operational active/not-deleted filtering to eligibility/master reads; preserve financial/history/replay exceptions. Historical account lookups must not lose prior loans because a member is inactive. Loan details do not expose full NIK, secrets or raw database errors.
+- 400 malformed/invalid fields, 401 no session, 403 role/origin/authority denial, 404 missing resource or version not belonging to the loan, 409 stale revision/idempotency conflict/already-completed action, 422 valid request blocked by policy/conditions/cash/overpayment, 503 temporary database/lock/dependency failure, sanitized 500 unexpected invariant failure. Follow existing fault mappings; make any required additions explicit and contract-tested.
+- Commands use the existing durable request runner and bounded lock/statement timeouts. Preserve cancellation; no unbounded retries. Financial effects, revisions, journal, audit and replay result commit together.
+- Query/service authorization rechecks staff identity, KCP and relevant active master eligibility. Shared cross-KCP visibility follows current rules; role labels alone do not grant approval limits.
+- Log safe operation, reference/revision and failure classification without identity documents, raw bodies or credential data. New endpoints reuse the existing logger/error boundary.
+- No restructure, arbitrary schedule edit, physical delete, posted repayment edit/delete, fee, penalty, write-off or manual reversal endpoint is included until its workflow/accounting policy is approved.
+- Implement contract/auth/validation tests for these endpoints and compatibility tests for legacy /loans. Add database integration coverage for policy changes, stale revisions, same-key replay, cross-key payout duplicates, concurrent payments, rollback and historical reads.
+
+This is an explicit proposed API contract inventory. Payout-evidence shape, final account mappings and configured tariffs must be finalized before the affected financial endpoints can be enabled.
