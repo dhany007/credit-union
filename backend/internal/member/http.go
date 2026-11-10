@@ -19,7 +19,7 @@ func RegisterRoutes(r gin.IRouter, service *Service, guard *auth.Handler) {
 		httpapi.JSON(c, http.StatusOK, item)
 	})
 	httpapi.GET(r, "/members", guard.Require(), func(c *gin.Context) {
-		rows, err := service.List(c.Request.Context(), c.Query("search"))
+		rows, err := service.ListBefore(c.Request.Context(), c.Query("search"), c.Query("before_id"))
 		if err != nil {
 			httpapi.Error(c, err)
 			return

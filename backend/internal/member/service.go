@@ -79,11 +79,24 @@ func (s *Service) Register(
 
 // List returns the existing bounded staff-facing projection.
 func (s *Service) List(ctx context.Context, search string) ([]Member, error) {
+	return s.ListBefore(ctx, search, "")
+}
+
+// ListBefore validates the optional member-directory continuation.
+func (s *Service) ListBefore(ctx context.Context, search, rawBefore string) ([]Member, error) {
 	search = strings.TrimSpace(search)
 	if len(search) > maximumSearchBytes {
 		return nil, fault.New(fault.Invalid, "Search is too long")
 	}
-	return s.store.List(ctx, search)
+	var before int64
+	if rawBefore != "" {
+		var err error
+		before, err = strconv.ParseInt(rawBefore, 10, 64)
+		if err != nil || before <= 0 {
+			return nil, fault.New(fault.Invalid, "Invalid member pagination cursor")
+		}
+	}
+	return s.store.ListBefore(ctx, search, before)
 }
 
 var accountNumberPattern = regexp.MustCompile(`^[1-9][0-9]{9}$`)
