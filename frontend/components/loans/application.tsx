@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { api } from "@/lib/api";
 import { jakartaToday, payoutBody, type Application, type Preview, type Staff } from "@/lib/loans";
 import { usePreferences } from "@/components/preferences";
@@ -42,13 +42,31 @@ export function ApplicationDetail({ application: a, user, limit, payout, execute
     function invalidate() { setPreview(null); setConfirm(null); setError(""); }
     return <article className="rounded-lg border p-5">
     <fieldset disabled={loading} className="space-y-5 min-w-0">
-    <h3 className="font-semibold">{a.application_number} · {a.member_name}</h3>
-    <p>{a.account_number} · {money(a.amount)} · {a.tenor_months} {t("bulan")}</p>
-    <p>{t("KCP penerima")}: {a.receiving_branch} · {t("KCP penanggung jawab")}: {a.responsible_branch}</p>
-    <p>{t("Tujuan pinjaman")}: {a.purpose}</p>{a.approved_amount !== null && <p>{t("Syarat disetujui")}: {money(a.approved_amount)} · {a.approved_tenor_months} {t("bulan")} · {(a.approved_interest_rate_bps??0)/100}% p.a.</p>}
-    <p>{t("Risiko")}: {t(a.risk === "high" ? "Tinggi" : a.risk === "medium" ? "Sedang" : "Rendah")}</p>{a.decision_reason && <p>{t("Alasan keputusan")}: {a.decision_reason}</p>}
+    <section className="space-y-4" aria-label={t("Ringkasan pengajuan")}>
+      <h3 className="font-semibold">{t("Ringkasan pengajuan")}</h3>
+      <dl className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-3 gap-y-3 text-sm sm:grid-cols-[12rem_minmax(0,1fr)]">
+        {[
+          [t("Nomor pengajuan"), a.application_number],
+          [t("Anggota"), a.member_name],
+          [t("Nomor rekening"), a.account_number],
+          [t("Nominal pengajuan"), money(a.amount)],
+          [t("Tenor pinjaman"), a.tenor_months + " " + t("bulan")],
+          [t("KCP penerima"), a.receiving_branch],
+          [t("KCP penanggung jawab"), a.responsible_branch],
+          [t("Tujuan pinjaman"), a.purpose],
+          [t("Risiko"), t(a.risk === "high" ? "Tinggi" : a.risk === "medium" ? "Sedang" : "Rendah")],
+          ...(canDecide && !payout ? [[t("Batas kewenangan"), money(limit)]] : []),
+          ...(a.approved_amount !== null ? [[t("Syarat disetujui"), money(a.approved_amount) + " · " + a.approved_tenor_months + " " + t("bulan") + " · " + (a.approved_interest_rate_bps??0)/100 + "% p.a."]] : []),
+          ...(a.decision_reason ? [[t("Alasan keputusan"), a.decision_reason]] : []),
+        ].map(([label, value]) => <Fragment key={label}>
+          <dt className="break-words text-muted-foreground">{label}</dt>
+          <dd className="grid min-w-0 grid-cols-[0.5rem_minmax(0,1fr)] gap-x-2">
+            <span aria-hidden="true">:</span><span className="break-words font-medium">{value}</span>
+          </dd>
+        </Fragment>)}
+      </dl>
+    </section>
  {canDecide && !payout && <>
-        <p className="text-sm text-muted-foreground">{t("Batas kewenangan")}: {money(limit)}</p>
         <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t("Pokok disetujui (Rp)")}>
         <AmountInput required value={amount} onValueChange={digits => { setAmount(digits); invalidate(); }}/>

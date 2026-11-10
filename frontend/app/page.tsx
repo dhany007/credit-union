@@ -1001,7 +1001,7 @@ export default function Home() {
           )}
           {tab === "interest" && user.role === "supervisor" && <InterestSettings key={user.id} />}
 {tab === "transactions" && <TransactionList />}
-          {tab === "loans" && <LoanWorkspace key={user.id} user={user} branches={meta?.branches ?? []} approvalLimit={meta?.approval_limit ?? 0} refresh={async () => { await refresh(); }} />}
+          {tab === "loans" && <LoanWorkspace key={user.id} user={user} branches={meta?.branches ?? []} refresh={async () => { await refresh(); }} />}
           <footer className="no-print mt-10 flex flex-wrap items-center justify-between gap-3 border-t pt-5 text-[10px] uppercase tracking-wider text-muted-foreground">
             <span>{t("Credit Union · Layanan anggota")}</span>
             <span className="flex items-center gap-2">

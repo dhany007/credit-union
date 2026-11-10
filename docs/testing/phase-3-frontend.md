@@ -61,3 +61,9 @@ Restructuring execution, penalties, write-offs and reversal actions remain outsi
 - UAT verified ID/dark and EN/light; policy-save notification has zero Print buttons. Modal body remained within 90% of viewport height while the footer remained visible.
 - Synthetic IDR 1,000 cash deposit was confirmed through the new dialog and displayed the committed reference in a success dialog. No browser error-level console messages were captured.
 - Main financial rows were not used for these UAT writes. Printing was preserved in code; a physical printer and screen reader were not exercised.
+
+## Application summary alignment (2026-11-10)
+
+Application details now use a semantic label/value definition list with a dedicated aligned colon column. Approval authority is read fresh from /meta when application details open rather than reusing the workspace bootstrap value.
+
+Frontend typecheck, ESLint, all 46 Node tests and the production web rebuild/restart passed. Read-only Chrome verification of local PJ-1 confirmed every colon shares the same horizontal position and the displayed Supervisor limit is IDR 100,000,000. No approval or financial posting was performed during this layout check.

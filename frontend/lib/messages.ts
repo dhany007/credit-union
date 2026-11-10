@@ -1,4 +1,8 @@
 export const messages = {
+ "Ringkasan pengajuan": "Application summary",
+ "Nomor pengajuan": "Application number",
+ "Nominal pengajuan": "Requested amount",
+ "Tenor pinjaman": "Loan term",
  "Tutup": "Close",
  "Tidak dapat melanjutkan": "Unable to continue",
  "Pulihkan permintaan": "Recover request",

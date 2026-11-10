@@ -16,10 +16,9 @@ import { AccountDetail } from "./loans/account";
 import { LoanPolicies } from "./loans/policies";
 import { ErrorNotice, Field, Paged, selectClass, useRead } from "./loans/shared";
 type View = "applications" | "payouts" | "accounts";
-export function LoanWorkspace({ user, branches, approvalLimit, refresh }: {
+export function LoanWorkspace({ user, branches, refresh }: {
     user: Staff;
     branches: Branch[];
-    approvalLimit: number;
     refresh: () => Promise<void>;
 }) {
     const { t, money, locale } = usePreferences();
@@ -115,7 +114,7 @@ export function LoanWorkspace({ user, branches, approvalLimit, refresh }: {
     </Modal>
     <Modal open={selected !== null} onClose={()=>setSelected(null)} title={t("Rincian pinjaman")} wide blocked={busy}>
       <fieldset disabled={busy || !!pending} className="min-w-0">
-        {selected && <Detail key={view + selected + epoch} id={selected} view={view} user={user} limit={approvalLimit} execute={execute} onReceipt={value=>{setSelected(null);setReceipt(value);}}/>}
+        {selected && <Detail key={view + selected + epoch} id={selected} view={view} user={user} execute={execute} onReceipt={value=>{setSelected(null);setReceipt(value);}}/>}
       </fieldset>
     </Modal>
 
@@ -168,16 +167,16 @@ export function LoanWorkspace({ user, branches, approvalLimit, refresh }: {
     </div>;
 }
 function statusLabel(status: string, t: ReturnType<typeof usePreferences>["t"]) { return t(status === "active" ? "Aktif" : status === "paid_off" ? "Lunas" : status === "approved" ? "Disetujui" : status === "rejected" ? "Ditolak" : status === "submitted" ? "Menunggu keputusan" : "Semua"); }
-function Detail({ id, view, user, limit, execute, onReceipt }: {
+function Detail({ id, view, user, execute, onReceipt }: {
     id: number;
     view: View;
     user: Staff;
-    limit: number;
     execute: (path: string, input: unknown) => Promise<void>;
     onReceipt: (receipt: Receipt) => void;
 }) {
     const { t } = usePreferences();
     const { data, error } = useRead<Application | Account>((view === "accounts" ? "/loan-accounts/" : "/loan-applications/") + id);
+    const authority = useRead<{ approval_limit: number }>(view === "accounts" ? "" : "/meta");
     return <>
-    <ErrorNotice error={error ?? ""}/>{data ? view === "accounts" ? <AccountDetail account={data as Account} user={user} execute={execute} onReceipt={onReceipt}/> : <ApplicationDetail application={data as Application} user={user} limit={limit} payout={view === "payouts"} execute={execute}/> : !error && <p role="status">{t("Memuat...")}</p>}</>;
+    <ErrorNotice error={error ?? authority.error ?? ""}/>{data ? view === "accounts" ? <AccountDetail account={data as Account} user={user} execute={execute} onReceipt={onReceipt}/> : authority.data ? <ApplicationDetail application={data as Application} user={user} limit={authority.data.approval_limit} payout={view === "payouts"} execute={execute}/> : !authority.error && <p role="status">{t("Memuat...")}</p> : !error && <p role="status">{t("Memuat...")}</p>}</>;
 }
