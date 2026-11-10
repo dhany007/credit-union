@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { formatLoanTimestamp, jakartaToday, payoutBody, repaymentBody, loanListReference } from "../lib/loans.ts";
+import { applicationStage, formatLoanTimestamp, jakartaToday, payoutBody, repaymentBody, loanListReference } from "../lib/loans.ts";
 import { submitLoanCommand } from "../lib/loan-command.ts";
 test("business date crosses midnight in Jakarta rather than the client zone", () => {
  assert.equal(jakartaToday(new Date("2026-11-10T17:01:00Z")), "2026-11-11");
@@ -36,4 +36,11 @@ test("application timestamps use Jakarta and undecided rows show a dash", () => 
  assert.match(id, /00[.:]30 WIB$/);
  assert.match(en, /11 Nov 2026/);
  assert.match(en, /00:30 WIB$/);
+});
+
+test("application display status separates approved and actually disbursed loans", () => {
+ assert.equal(applicationStage({status:"submitted",linked_loan_id:null}), "Menunggu persetujuan");
+ assert.equal(applicationStage({status:"approved",linked_loan_id:null}), "Menunggu pencairan");
+ assert.equal(applicationStage({status:"approved",linked_loan_id:42}), "Sudah dicairkan");
+ assert.equal(applicationStage({status:"rejected",linked_loan_id:null}), "Ditolak");
 });

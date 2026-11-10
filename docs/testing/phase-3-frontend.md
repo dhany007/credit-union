@@ -109,3 +109,12 @@ Frontend typecheck, ESLint, all 56 tests and production Docker web rebuild/resta
 ## Success toast follow-up (2026-11-11)
 
 Non-financial loan successes (including approval/rejection) now use shadcn Sonner notifications at the top right, with EN/ID text, theme tokens, close control and a five-second duration. Financial receipts retain their read/print modal. Confirmations and uncertain-command recovery remain explicit dialogs. Frontend typecheck, ESLint and 56 tests passed; no approval was posted to trigger a visual test.
+
+## Loan submenu and Supervisor operational authority (2026-11-11)
+
+- Sidebar contains Applications, Loan accounts and Supervisor-only Interest rates. Removed the workspace tabs and separate payout menu.
+- Teller application creation uses a page with Back; success refreshes the application list with an EN/ID toast. Approved without a linked loan displays Awaiting disbursement; linked loans display Disbursed.
+- Supervisor alone may preview/post payout and repayment. Teller reads remain available. Payout/revision/verification/cash and duplicate prevention checks are retained.
+- Integration tests proved RED when Teller preview was incorrectly accepted, then GREEN after role enforcement. Tests reject payout for submitted/rejected applications and reject Teller payout/repayment; concurrency, rollback, cross-KCP attribution, journal and savings reconciliation remain covered.
+- Full Go race suite passed (integration 93.617 seconds), Go lint zero issues, frontend typecheck/ESLint and 58 tests passed. API and web images rebuilt/restarted healthy.
+- Chrome verified main Teller submenu, full-page intake/Back, Awaiting-disbursement status with no Teller payout action. On isolated port-3002 data, Teller submitted synthetic PJ-27 and returned to the refreshed list with the expected toast and no success dialog. Supervisor saw the additional tariff submenu and no payout action on submitted or already-disbursed applications. No main financial write occurred.

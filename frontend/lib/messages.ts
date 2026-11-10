@@ -1,4 +1,8 @@
 export const messages = {
+ "Menunggu persetujuan": "Awaiting approval",
+ "Menunggu pencairan": "Awaiting disbursement",
+ "Sudah dicairkan": "Disbursed",
+ "Pengajuan pinjaman berhasil dikirim.": "Loan application submitted successfully.",
  "Tanggal pengajuan": "Application date",
  "Tanggal keputusan": "Decision date",
  "Diputuskan oleh": "Decided by",

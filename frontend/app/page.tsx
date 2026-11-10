@@ -95,6 +95,7 @@ export default function Home() {
   const { t, money, ready } = usePreferences();
   const [user, setUser] = useState<User | null>(null),
     [boot, setBoot] = useState(true);
+  const [loanSection, setLoanSection] = useState<"applications" | "accounts" | "policies">("applications");
   const [tab, setTab] = useState("members"),
     [members, setMembers] = useState<Member[]>([]),
     [meta, setMeta] = useState<Meta | null>(null);
@@ -355,6 +356,7 @@ export default function Home() {
             { id: "transactions", label: t("Transaksi"), icon: ReceiptText },
  ...(user.role === "supervisor" ? [{ id: "interest", label: t("Bunga simpanan"), icon: Wallet }] : []),
           ].map((item) => (
+            <div key={item.id} className="contents">
             <button
               key={item.id}
               onClick={() => navigate(item.id)}
@@ -373,6 +375,15 @@ export default function Home() {
                 <ChevronRight className="ml-auto hidden lg:block" size={14} />
               )}
             </button>
+            {item.id === "loans" && tab === "loans" && <nav aria-label={t("Layanan pinjaman")} className="ml-5 flex flex-col gap-1 border-l pl-3">
+              {(["applications", "accounts", ...(user.role === "supervisor" ? ["policies"] as const : [])] as const).map(section =>
+                <button key={section} disabled={busy} onClick={() => setLoanSection(section)}
+                  aria-current={loanSection === section ? "page" : undefined}
+                  className={cn("rounded-md px-3 py-2 text-left text-sm", loanSection === section ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>
+                  {t(section === "applications" ? "Pengajuan" : section === "accounts" ? "Daftar pinjaman" : "Tarif bunga pinjaman")}
+                </button>)}
+            </nav>}
+            </div>
           ))}
         </nav>
         <div className="mt-auto hidden border-t pt-5 lg:block">
@@ -957,7 +968,7 @@ export default function Home() {
           )}
           {tab === "interest" && user.role === "supervisor" && <InterestSettings key={user.id} />}
 {tab === "transactions" && <TransactionList />}
-          {tab === "loans" && <LoanWorkspace key={user.id} user={user} branches={meta?.branches ?? []} refresh={async () => { await refresh(); }} />}
+          {tab === "loans" && <LoanWorkspace key={user.id + loanSection} section={loanSection} user={user} branches={meta?.branches ?? []} refresh={async () => { await refresh(); }} />}
           <footer className="no-print mt-10 flex flex-wrap items-center justify-between gap-3 border-t pt-5 text-[10px] uppercase tracking-wider text-muted-foreground">
             <span>{t("Credit Union · Layanan anggota")}</span>
             <span className="flex items-center gap-2">

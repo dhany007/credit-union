@@ -156,3 +156,10 @@ export function formatLoanTimestamp(value: string | null, locale: string): strin
         timeZone: "Asia/Jakarta",
     }).format(new Date(value)) + " WIB";
 }
+
+export function applicationStage(application: Pick<Application, "status" | "linked_loan_id">) {
+    if (application.linked_loan_id) return "Sudah dicairkan";
+    if (application.status === "approved") return "Menunggu pencairan";
+    if (application.status === "submitted") return "Menunggu persetujuan";
+    return "Ditolak";
+}

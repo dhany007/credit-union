@@ -70,7 +70,7 @@ export function AccountDetail({ account: a, user, execute, onReceipt }: {
                 <p>{v.reason} · {t("Disetujui oleh")} #{v.approved_by} · {formatDate(v.approved_at)} WIB</p>
                 <Button variant="outline" onClick={() => { setVersion(v.id); setSection("schedule"); }}>{t("Lihat jadwal")}</Button>
                 </section>)}</div>}</Paged>}
- {section === "payments" && <div className="space-y-5">{user.role === "teller" && a.status === "active" && <form onSubmit={review} className="space-y-4">
+ {section === "payments" && <div className="space-y-5">{user.role === "supervisor" && a.status === "active" && <form onSubmit={review} className="space-y-4">
             <fieldset disabled={loading} className="grid gap-4 sm:grid-cols-2">
             <legend className="mb-3 font-semibold">{t("Catat pembayaran")}</legend>
             <Field label={t("Nominal pembayaran (Rp)")}>

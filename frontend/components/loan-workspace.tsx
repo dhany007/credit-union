@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { submitLoanCommand } from "@/lib/loan-command";
 import { LoanReceipt } from "./loans/receipt";
-import { formatLoanTimestamp, loanListReference } from "@/lib/loans";
+import { applicationStage, formatLoanTimestamp, loanListReference } from "@/lib/loans";
 import { api, ApiError } from "@/lib/api";
 import type { Account, Application, Branch, Command, Receipt, Staff } from "@/lib/loans";
 import { usePreferences } from "@/components/preferences";
@@ -17,18 +17,19 @@ import { ApplicationDetail } from "./loans/application";
 import { AccountDetail } from "./loans/account";
 import { LoanPolicies } from "./loans/policies";
 import { ErrorNotice, Field, Paged, selectClass, useRead } from "./loans/shared";
-type View = "applications" | "payouts" | "accounts";
-export function LoanWorkspace({ user, branches, refresh }: {
+type View = "applications" | "accounts";
+export function LoanWorkspace({ user, branches, refresh, section }: {
+    section: View | "policies";
     user: Staff;
     branches: Branch[];
     refresh: () => Promise<void>;
 }) {
     const { t, money, locale } = usePreferences();
-    const [view, setView] = useState<View>("applications");
+    const [view, setView] = useState<View>(section === "accounts" ? "accounts" : "applications");
     const [filters, setFilters] = useState("");
     const [selected, setSelected] = useState<number | null>(null);
     const [intake, setIntake] = useState(false);
-    const [policies, setPolicies] = useState(false);
+    const policies = section === "policies" && user.role === "supervisor";
     const [epoch, setEpoch] = useState(0);
     const [busy, setBusy] = useState(false);
     const [pending, setPending] = useState<Command | null>(null);
@@ -72,7 +73,7 @@ export function LoanWorkspace({ user, branches, refresh }: {
             setReceipt({ ...result, loan_id: result.loan_id ?? (command.path.startsWith("/loan-accounts/") ? Number(command.path.split("/")[2]) : undefined), label: command.path === "/loan-interest/policies" ? t("Versi tarif") + " #" + result.id : result.id ? "PJ-" + result.id : undefined });
             } else {
                 const decision = command.path.endsWith("/decision") ? JSON.parse(command.payload).decision : null;
-                toast.success(t(decision === "approved" ? "Pengajuan pinjaman disetujui." : decision === "rejected" ? "Pengajuan pinjaman ditolak." : "Permintaan berhasil dicatat"), {
+                toast.success(t(command.path === "/loans" ? "Pengajuan pinjaman berhasil dikirim." : decision === "approved" ? "Pengajuan pinjaman disetujui." : decision === "rejected" ? "Pengajuan pinjaman ditolak." : "Permintaan berhasil dicatat"), {
                     description: command.path === "/loan-interest/policies" ? t("Versi tarif") + " #" + result.id : result.id ? "PJ-" + result.id : undefined,
                 });
             }
@@ -100,8 +101,8 @@ export function LoanWorkspace({ user, branches, refresh }: {
             return;
         await submit({ path, payload: JSON.stringify(input), key: crypto.randomUUID() });
     }
-    function navigate(v: View) { setView(v); setSelected(null); setFilters(""); setIntake(false); setPolicies(false); }
-    const listPath = (view === "accounts" ? "/loan-accounts" : "/loan-applications") + "?" + filters + (view === "payouts" ? "&payout_pending=true" : "");
+    function navigate(v: View) { setView(v); setSelected(null); setFilters(""); setIntake(false); }
+    const listPath = (view === "accounts" ? "/loan-accounts" : "/loan-applications") + "?" + filters;
     return <div className="space-y-5">
     {!pending && <ErrorNotice error={error} onClose={()=>setError("")}/>}
     {pending && pendingHidden && <Button variant="outline" onClick={()=>setPendingHidden(false)}>{t("Pulihkan permintaan")}</Button>}
@@ -116,14 +117,15 @@ export function LoanWorkspace({ user, branches, refresh }: {
       {receipt && <LoanReceipt key={receipt.reference ?? receipt.label} receipt={receipt} user={user}
         open={id=>{setReceipt(null);navigate("accounts");setSelected(id);}}/>}
     </Modal>
-    <Modal open={intake} onClose={()=>setIntake(false)} title={t("Pengajuan pinjaman reguler")}
-      description={t("Isi data pengajuan dan tinjau jadwal angsuran sebelum mengirim.")} wide scrollable={false} blocked={busy}>
-      <ApplicationForm user={user} branches={branches} execute={execute} onCancel={()=>setIntake(false)} blocked={busy || !!pending}/>
-    </Modal>
+    {intake && <section className="space-y-4">
+      <Button variant="ghost" disabled={busy} onClick={() => setIntake(false)}><ArrowLeft aria-hidden="true" size={18}/>{t("Kembali ke daftar pengajuan")}</Button>
+      <h2 className="text-xl font-semibold">{t("Pengajuan pinjaman reguler")}</h2>
+      <ApplicationForm user={user} branches={branches} execute={execute} onCancel={()=>setIntake(false)} blocked={!ready || busy || !!pending}/>
+    </section>}
     {selected !== null && <section aria-label={t("Rincian pinjaman")} className="space-y-5">
       <header className="space-y-3">
         <Button variant="ghost" disabled={busy} onClick={() => { setSelected(null); requestAnimationFrame(() => detailTrigger.current?.focus()); }}>
-          <ArrowLeft aria-hidden="true" size={18}/>{t(view === "accounts" ? "Kembali ke daftar pinjaman" : view === "payouts" ? "Kembali ke daftar pencairan" : "Kembali ke daftar pengajuan")}
+          <ArrowLeft aria-hidden="true" size={18}/>{t(view === "accounts" ? "Kembali ke daftar pinjaman" : "Kembali ke daftar pengajuan")}
         </Button>
         <h2 tabIndex={-1} ref={node => node?.focus()} className="text-xl font-semibold">{t("Rincian pinjaman")}</h2>
       </header>
@@ -131,11 +133,11 @@ export function LoanWorkspace({ user, branches, refresh }: {
         <Detail key={view + selected + epoch} id={selected} view={view} user={user} execute={execute} onReceipt={setReceipt}/>
       </fieldset>
     </section>}
-    <div hidden={selected !== null}>
+    <div hidden={selected !== null || intake}>
 
  <fieldset disabled={!ready || busy || !!pending} className="no-print space-y-5 min-w-0">
     <legend className="sr-only">{t("Pinjaman")}</legend>
-    <nav className="flex flex-wrap gap-2" aria-label={t("Layanan pinjaman")}>{(["applications", "payouts", "accounts"] as const).map((v, i) => <Button key={v} aria-pressed={view === v && !policies} variant={view === v && !policies ? "default" : "outline"} onClick={() => navigate(v)}>{[t("Pengajuan"), t("Pencairan"), t("Daftar pinjaman")][i]}</Button>)}{user.role === "supervisor" && <Button variant={policies ? "default" : "outline"} onClick={() => { setPolicies(!policies); setSelected(null); }}>{t("Tarif bunga pinjaman")}</Button>}</nav>
+
  {policies ? <LoanPolicies key={epoch} execute={execute}/> : <>{user.role === "teller" && view === "applications" && <Button variant="outline" onClick={() => setIntake(!intake)}>{t("Ajukan pinjaman")}</Button>}
  <form key={view} className="flex flex-wrap items-end gap-3" onSubmit={e => {
                 e.preventDefault();
@@ -145,7 +147,8 @@ export function LoanWorkspace({ user, branches, refresh }: {
                     q.set("account_number", String(d.account));
                 if (d.reference)
                     q.set(view === "accounts" ? "loan_number" : "application_number", String(d.reference));
-                q.set("status", view === "payouts" ? "approved" : String(d.status));
+                q.set("status", String(d.status));
+                if (view === "applications" && d.status === "approved") q.set("payout_pending", "true");
                 setFilters(q.toString());
                 setSelected(null);
             }}>
@@ -154,7 +157,7 @@ export function LoanWorkspace({ user, branches, refresh }: {
         </Field>
         <Field label={t("Referensi")}>
         <Input name="reference" maxLength={50} placeholder={view === "accounts" ? "LN-" : "PJ-"}/>
-        </Field>{view !== "payouts" && <Field label={t("Status")}>
+        </Field>{<Field label={t("Status")}>
             <select name="status" className={selectClass} defaultValue={view === "accounts" ? "active" : "all"}>{(view === "accounts" ? ["active", "paid_off", "all"] : ["all", "submitted", "approved", "rejected"]).map(s => <option key={s} value={s}>{statusLabel(s, t)}</option>)}</select>
             </Field>}<Button>{t("Terapkan filter")}</Button>
         <Button type="button" variant="outline" onClick={() => { setEpoch(v => v + 1); setSelected(null); }}>{t("Muat ulang")}</Button>
@@ -171,7 +174,7 @@ export function LoanWorkspace({ user, branches, refresh }: {
                 <td className="border-b p-3">{r.member_name}</td>
                 <td className="border-b p-3">{r.account_number}</td>
                 <td className="border-b p-3">{money("principal_amount" in r ? r.principal_amount : r.amount)}</td>
-                <td className="border-b p-3">{statusLabel(r.status, t)}</td>
+                <td className="border-b p-3">{"linked_loan_id" in r ? t(applicationStage(r)) : statusLabel(r.status, t)}</td>
                 {"decided_at" in r && <td className="border-b p-3">{formatLoanTimestamp(r.decided_at, locale)}</td>}
                 <td className="border-b p-3">
                 <Button variant="outline" onClick={event => { detailTrigger.current = event.currentTarget; setSelected(r.id); }}>{t("Lihat rincian")}</Button>
@@ -184,7 +187,7 @@ export function LoanWorkspace({ user, branches, refresh }: {
     </div>
     </div>;
 }
-function statusLabel(status: string, t: ReturnType<typeof usePreferences>["t"]) { return t(status === "active" ? "Aktif" : status === "paid_off" ? "Lunas" : status === "approved" ? "Disetujui" : status === "rejected" ? "Ditolak" : status === "submitted" ? "Menunggu keputusan" : "Semua"); }
+function statusLabel(status: string, t: ReturnType<typeof usePreferences>["t"]) { return t(status === "active" ? "Aktif" : status === "paid_off" ? "Lunas" : status === "approved" ? "Menunggu pencairan" : status === "rejected" ? "Ditolak" : status === "submitted" ? "Menunggu persetujuan" : "Semua"); }
 function Detail({ id, view, user, execute, onReceipt }: {
     id: number;
     view: View;
@@ -196,5 +199,5 @@ function Detail({ id, view, user, execute, onReceipt }: {
     const { data, error } = useRead<Application | Account>((view === "accounts" ? "/loan-accounts/" : "/loan-applications/") + id);
     const authority = useRead<{ approval_limit: number }>(view === "accounts" ? "" : "/meta");
     return <>
-    <ErrorNotice error={error ?? authority.error ?? ""}/>{data ? view === "accounts" ? <AccountDetail account={data as Account} user={user} execute={execute} onReceipt={onReceipt}/> : authority.data ? <ApplicationDetail application={data as Application} user={user} limit={authority.data.approval_limit} payout={view === "payouts"} execute={execute}/> : !authority.error && <p role="status">{t("Memuat...")}</p> : !error && <p role="status">{t("Memuat...")}</p>}</>;
+    <ErrorNotice error={error ?? authority.error ?? ""}/>{data ? view === "accounts" ? <AccountDetail account={data as Account} user={user} execute={execute} onReceipt={onReceipt}/> : authority.data ? <ApplicationDetail application={data as Application} user={user} limit={authority.data.approval_limit} payout={user.role === "supervisor" && (data as Application).status === "approved" && !(data as Application).linked_loan_id && (data as Application).pricing_complete} execute={execute}/> : !authority.error && <p role="status">{t("Memuat...")}</p> : !error && <p role="status">{t("Memuat...")}</p>}</>;
 }
