@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { ArrowLeft } from "lucide-react";
 import { submitLoanCommand } from "@/lib/loan-command";
 import { LoanReceipt } from "./loans/receipt";
-import { loanListReference } from "@/lib/loans";
+import { formatLoanTimestamp, loanListReference } from "@/lib/loans";
 import { api, ApiError } from "@/lib/api";
 import type { Account, Application, Branch, Command, Receipt, Staff } from "@/lib/loans";
 import { usePreferences } from "@/components/preferences";
@@ -35,6 +37,7 @@ export function LoanWorkspace({ user, branches, refresh }: {
     const [error, setError] = useState("");
     const [receipt, setReceipt] = useState<Receipt | null>(null);
     const lock = useRef(false);
+    const detailTrigger = useRef<HTMLButtonElement | null>(null);
     const storageKey = "credit-union.loan-command." + user.id;
     // Hydrate the saved cash command before enabling any new writes after SSR.
     useEffect(() => {
@@ -65,8 +68,14 @@ export function LoanWorkspace({ user, branches, refresh }: {
             setPending(command);
             const result = await submitLoanCommand(command, sessionStorage, storageKey, c => api<Receipt>(c.path, { method: "POST", headers: { "Idempotency-Key": c.key }, body: c.payload }));
             setPending(null);
+            if (result.reference || result.loan_id || command.path.includes("/repayments") || command.path.endsWith("/disburse")) {
             setReceipt({ ...result, loan_id: result.loan_id ?? (command.path.startsWith("/loan-accounts/") ? Number(command.path.split("/")[2]) : undefined), label: command.path === "/loan-interest/policies" ? t("Versi tarif") + " #" + result.id : result.id ? "PJ-" + result.id : undefined });
-            setSelected(null);
+            } else {
+                const decision = command.path.endsWith("/decision") ? JSON.parse(command.payload).decision : null;
+                toast.success(t(decision === "approved" ? "Pengajuan pinjaman disetujui." : decision === "rejected" ? "Pengajuan pinjaman ditolak." : "Permintaan berhasil dicatat"), {
+                    description: command.path === "/loan-interest/policies" ? t("Versi tarif") + " #" + result.id : result.id ? "PJ-" + result.id : undefined,
+                });
+            }
             setIntake(false);
             setEpoch(v => v + 1);
             await refresh();
@@ -77,7 +86,6 @@ export function LoanWorkspace({ user, branches, refresh }: {
                 sessionStorage.removeItem(storageKey);
                 setPending(null);
                 if (e.status === 409) {
-                    setSelected(null);
                     setEpoch(v => v + 1);
                 }
             }
@@ -112,11 +120,18 @@ export function LoanWorkspace({ user, branches, refresh }: {
       description={t("Isi data pengajuan dan tinjau jadwal angsuran sebelum mengirim.")} wide scrollable={false} blocked={busy}>
       <ApplicationForm user={user} branches={branches} execute={execute} onCancel={()=>setIntake(false)} blocked={busy || !!pending}/>
     </Modal>
-    <Modal open={selected !== null} onClose={()=>setSelected(null)} title={t("Rincian pinjaman")} wide blocked={busy}>
-      <fieldset disabled={busy || !!pending} className="min-w-0">
-        {selected && <Detail key={view + selected + epoch} id={selected} view={view} user={user} execute={execute} onReceipt={value=>{setSelected(null);setReceipt(value);}}/>}
+    {selected !== null && <section aria-label={t("Rincian pinjaman")} className="space-y-5">
+      <header className="space-y-3">
+        <Button variant="ghost" disabled={busy} onClick={() => { setSelected(null); requestAnimationFrame(() => detailTrigger.current?.focus()); }}>
+          <ArrowLeft aria-hidden="true" size={18}/>{t(view === "accounts" ? "Kembali ke daftar pinjaman" : view === "payouts" ? "Kembali ke daftar pencairan" : "Kembali ke daftar pengajuan")}
+        </Button>
+        <h2 tabIndex={-1} ref={node => node?.focus()} className="text-xl font-semibold">{t("Rincian pinjaman")}</h2>
+      </header>
+      <fieldset disabled={!ready || busy || !!pending} className="min-w-0">
+        <Detail key={view + selected + epoch} id={selected} view={view} user={user} execute={execute} onReceipt={setReceipt}/>
       </fieldset>
-    </Modal>
+    </section>}
+    <div hidden={selected !== null}>
 
  <fieldset disabled={!ready || busy || !!pending} className="no-print space-y-5 min-w-0">
     <legend className="sr-only">{t("Pinjaman")}</legend>
@@ -148,22 +163,25 @@ export function LoanWorkspace({ user, branches, refresh }: {
             <table className="w-full whitespace-nowrap text-left text-sm">
             <caption className="sr-only">{t("Daftar pinjaman")}</caption>
             <thead>
-            <tr>{[t("Referensi"), t("Anggota"), t("Nomor rekening"), t("Nominal"), t("Status"), t("Tindakan")].map(h => <th key={h} className="border-b p-3">{h}</th>)}</tr>
+            <tr>{[t("Referensi"), ...(view !== "accounts" ? [t("Tanggal pengajuan")] : []), t("Anggota"), t("Nomor rekening"), t("Nominal"), t("Status"), ...(view !== "accounts" ? [t("Tanggal keputusan")] : []), t("Tindakan")].map(h => <th key={h} className="border-b p-3">{h}</th>)}</tr>
             </thead>
             <tbody>{rows.map(r => <tr key={r.id}>
                 <td className="border-b p-3">{loanListReference(r)}</td>
+                {"created_at" in r && <td className="border-b p-3">{formatLoanTimestamp(r.created_at, locale)}</td>}
                 <td className="border-b p-3">{r.member_name}</td>
                 <td className="border-b p-3">{r.account_number}</td>
                 <td className="border-b p-3">{money("principal_amount" in r ? r.principal_amount : r.amount)}</td>
                 <td className="border-b p-3">{statusLabel(r.status, t)}</td>
+                {"decided_at" in r && <td className="border-b p-3">{formatLoanTimestamp(r.decided_at, locale)}</td>}
                 <td className="border-b p-3">
-                <Button variant="outline" onClick={() => setSelected(r.id)}>{t("Lihat rincian")}</Button>
+                <Button variant="outline" onClick={event => { detailTrigger.current = event.currentTarget; setSelected(r.id); }}>{t("Lihat rincian")}</Button>
                 </td>
                 </tr>)}</tbody>
             </table>
             </div>}</Paged>
  </>}
  </fieldset>
+    </div>
     </div>;
 }
 function statusLabel(status: string, t: ReturnType<typeof usePreferences>["t"]) { return t(status === "active" ? "Aktif" : status === "paid_off" ? "Lunas" : status === "approved" ? "Disetujui" : status === "rejected" ? "Ditolak" : status === "submitted" ? "Menunggu keputusan" : "Semua"); }

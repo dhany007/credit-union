@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { jakartaToday, payoutBody, repaymentBody, loanListReference } from "../lib/loans.ts";
+import { formatLoanTimestamp, jakartaToday, payoutBody, repaymentBody, loanListReference } from "../lib/loans.ts";
 import { submitLoanCommand } from "../lib/loan-command.ts";
 test("business date crosses midnight in Jakarta rather than the client zone", () => {
  assert.equal(jakartaToday(new Date("2026-11-10T17:01:00Z")), "2026-11-11");
@@ -27,3 +27,13 @@ for(const status of [400,404,409,422]) test("HTTP "+status+" permits a fresh rev
 test("storage failure prevents sending a cash request", async () => {let sent=false;await assert.rejects(submitLoanCommand(command,{setItem(){throw Error("blocked");},removeItem(){}},"pending",async()=>{sent=true;}));assert.equal(sent,false);});
 
 test("an undisbursed application keeps its PJ reference even with a null loan_number",()=>{assert.equal(loanListReference({application_number:"PJ-25",loan_number:null}),"PJ-25");assert.equal(loanListReference({loan_number:"LN-1"}),"LN-1");});
+
+test("application timestamps use Jakarta and undecided rows show a dash", () => {
+ assert.equal(formatLoanTimestamp(null, "id"), "—");
+ const id = formatLoanTimestamp("2026-11-10T17:30:00Z", "id");
+ const en = formatLoanTimestamp("2026-11-10T17:30:00Z", "en");
+ assert.match(id, /11 Nov 2026/);
+ assert.match(id, /00[.:]30 WIB$/);
+ assert.match(en, /11 Nov 2026/);
+ assert.match(en, /00:30 WIB$/);
+});

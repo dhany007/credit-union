@@ -14,6 +14,9 @@ export type Page<T> = {
     next_cursor: string;
 };
 export type Application = {
+    created_at: string;
+    decided_at: string | null;
+    decision_by: number | null;
     loan_interest_policy_id: number | null;
  approved_interest_rate_bps: number | null;
     id: number;
@@ -142,3 +145,14 @@ export function jakartaToday(now = new Date()) { return new Date(now.getTime() +
 export function payoutBody(p: Preview, verification: string) { return { expected_approval_revision: p.approval_revision, expected_policy_id: p.policy_id, expected_rate_bps: p.annual_rate_bps, expected_principal: p.amount, expected_tenor_months: p.tenor_months, expected_payout_date: p.payout_date, recipient_verified: true, agreement_signed: true, conditions_verified: true, verification_note: verification, note: "" }; }
 export function repaymentBody(p: PaymentPreview, note: string) { return { amount: p.amount, expected_payment_revision: p.expected_payment_revision, expected_schedule_version_id: p.current_schedule_version_id, note }; }
 export function loanListReference(item: Application | Account): string { return "application_number" in item ? item.application_number : item.loan_number; }
+
+
+// Application timestamps are instants; display them consistently in the operational timezone.
+export function formatLoanTimestamp(value: string | null, locale: string): string {
+    if (!value) return "—";
+    return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "id-ID", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+        timeZone: "Asia/Jakarta",
+    }).format(new Date(value)) + " WIB";
+}

@@ -1,7 +1,8 @@
 "use client";
 import { Fragment, useState, type ReactNode } from "react";
+import { Modal } from "../modal";
 import { useLoanPreview } from "./use-loan-preview";
-import { jakartaToday, payoutBody, type Application, type Installment, type Staff } from "@/lib/loans";
+import { formatLoanTimestamp, jakartaToday, payoutBody, type Application, type Installment, type Staff } from "@/lib/loans";
 import { usePreferences } from "@/components/preferences";
 import { Button } from "@/components/ui/button";
 import { AmountInput } from "@/components/amount-input";
@@ -15,7 +16,7 @@ export function ApplicationDetail({ application: a, user, limit, payout, execute
     payout: boolean;
     execute: Execute;
 }) {
-    const { t, money } = usePreferences();
+    const { t, money, locale } = usePreferences();
     const [amount, setAmount] = useState(String(a.approved_amount ?? a.amount));
     const [tenor, setTenor] = useState(String(a.approved_tenor_months ?? a.tenor_months));
     const [reason, setReason] = useState("");
@@ -39,6 +40,9 @@ export function ApplicationDetail({ application: a, user, limit, payout, execute
     const policyID = preview?.policy_id ?? a.loan_interest_policy_id;
     const information: [string, ReactNode][] = [
       [t("Nomor pengajuan"), a.application_number],
+      [t("Tanggal pengajuan"), formatLoanTimestamp(a.created_at, locale)],
+      [t("Tanggal keputusan"), formatLoanTimestamp(a.decided_at, locale)],
+      [t("Diputuskan oleh"), a.decision_by ? "#" + a.decision_by : "—"],
       [t("Anggota"), a.member_name],
       [t("Nomor rekening"), a.account_number],
       [t(editable || a.approved_amount !== null ? "Pokok disetujui (Rp)" : "Nominal pengajuan"),
@@ -106,19 +110,36 @@ export function ApplicationDetail({ application: a, user, limit, payout, execute
         </Field>
         <Button disabled={!preview.payout_eligible}>{t("Tinjau pencairan")}</Button>
         </form>}
- {confirm && (confirm === "rejected" || preview) && <section role="region" aria-label={t("Konfirmasi pinjaman")} tabIndex={-1} ref={node => node?.focus()} className="space-y-3 rounded-lg border border-primary p-4">
-        <h4 className="font-semibold">{t("Konfirmasi pinjaman")}</h4>
-        <p>{a.member_name} · {a.account_number} · {money(confirm === "rejected" ? a.amount : Number(amount))} · {user.branch_name}</p>
-        <p>{t(confirm === "payout" ? "Konfirmasi setelah uang tunai siap diserahkan. Jangan ulang dengan referensi baru jika respons terputus." : confirm === "approved" ? "Setujui syarat sesuai preview yang ditinjau?" : "Tolak pengajuan ini?")}</p>
+ </fieldset>
+ <Modal open={!!confirm && (confirm === "rejected" || !!preview)} onClose={() => setConfirm(null)}
+   title={t(confirm === "approved" ? "Konfirmasi persetujuan" : confirm === "rejected" ? "Konfirmasi penolakan" : "Konfirmasi pencairan")}
+   footer={<><Button variant="outline" onClick={() => setConfirm(null)}>{t("Kembali")}</Button>
         <Button disabled={confirm !== "rejected" && (loading || !preview)} onClick={() => {
                 if (confirm !== "rejected" && !preview) return;
+                setConfirm(null);
                 if (confirm === "payout" && preview)
                     void execute("/loan-applications/" + a.id + "/disburse", payoutBody(preview, reason));
                 else
                     void execute("/loans/" + a.id + "/decision", { decision: confirm, reason, ...(confirm === "approved" && preview ? { approved_amount: preview.amount, approved_tenor_months: preview.tenor_months, expected_policy_id: preview.policy_id, expected_rate_bps: preview.annual_rate_bps, expected_approval_revision: a.approval_revision } : {}) });
-            }}>{t("Konfirmasi")}</Button>
-        <Button variant="ghost" onClick={() => setConfirm(null)}>{t("Batal")}</Button>
-        </section>}
- </fieldset>
+            }}>{t(confirm === "approved" ? "Konfirmasi persetujuan" : confirm === "rejected" ? "Konfirmasi penolakan" : "Konfirmasi pencairan")}</Button>
+</>}>
+   <dl className="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] gap-x-3 gap-y-4 text-sm">
+     {([
+       [t("Anggota"), a.member_name],
+       [t("Nomor rekening"), a.account_number],
+       [t(confirm === "rejected" ? "Nominal pengajuan" : "Pokok disetujui"), money(confirm === "rejected" ? a.amount : preview?.amount ?? Number(amount))],
+       [t("Tenor pinjaman"), (confirm === "rejected" ? a.tenor_months : preview?.tenor_months ?? Number(tenor)) + " " + t("bulan")],
+       ...(confirm !== "rejected" && preview ? [[t("Bunga pinjaman"), preview.annual_rate_bps / 100 + "% p.a."]] : []),
+       [t("KCP pemroses"), user.branch_name],
+       [t(confirm === "payout" ? "Catatan verifikasi" : "Alasan keputusan"), reason],
+     ] as [string, string][]).map(([label, value]) => <Fragment key={label}>
+       <dt className="text-muted-foreground">{label}</dt>
+       <dd className="grid min-w-0 grid-cols-[0.5rem_minmax(0,1fr)] gap-x-2">
+         <span aria-hidden="true">:</span><span className="whitespace-pre-wrap break-words font-medium">{value}</span>
+       </dd>
+     </Fragment>)}
+   </dl>
+   <p className="mt-6 border-t pt-4 text-sm text-muted-foreground">{t(confirm === "payout" ? "Konfirmasi setelah uang tunai siap diserahkan. Jangan ulang dengan referensi baru jika respons terputus." : confirm === "approved" ? "Pastikan rincian persetujuan sudah benar." : "Pastikan rincian penolakan sudah benar.")}</p>
+ </Modal>
     </article>;
 }

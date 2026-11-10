@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PreferencesProvider } from "@/components/preferences";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 // Apply the stored/system theme before paint; the root attribute mismatch is intentional.
 const themeBootstrap = `(()=>{let theme;try{theme=localStorage.getItem('credit-union.theme')}catch{}const dark=theme==='dark'||(theme!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',dark);document.documentElement.style.colorScheme=dark?'dark':'light'})()`;
@@ -19,7 +20,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
       <body>
-        <PreferencesProvider>{children}</PreferencesProvider>
+        <PreferencesProvider>{children}<Toaster/></PreferencesProvider>
       </body>
     </html>
   );

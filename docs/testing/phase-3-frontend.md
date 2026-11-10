@@ -97,3 +97,15 @@ This follow-up supersedes the earlier 20-row defaults and removal of old estimat
 - Isolated Chrome UAT used 151 synthetic members: 50 rows and All (151 rows) retained the same 778 px viewport; scrolling to the oldest row retained the sticky header and selecting that member loaded its profile beyond the bootstrap's first 100.
 - Loan tables initially displayed ten rows. Clearing the reviewed amount retained ten dimmed schedule rows with approval disabled. Changing the estimate to IDR 900,000 / six months retained the table while loading, then displayed six updated installments and enabled approval only after the response completed.
 - No approval or financial posting was submitted during these checks. No browser error-level logs were captured. EN/ID strings and existing light/dark tokens remain supported.
+
+## Full-page loan details (2026-11-11)
+
+Loan details now replace the list in the existing workspace instead of opening a detail dialog. The list remains mounted and hidden, preserving filter inputs, cursor cache and display-page selection when Back is used. This uses existing workspace navigation; no new URL route or API is introduced.
+
+Application approval, rejection and payout confirmation use one shared dialog above the detail page. It includes the member/account, amount, term/rate where applicable and decision reason. Returning from confirmation preserves inputs. The confirmation closes before command processing/recovery begins. Successful writes refresh the selected details rather than navigating away; receipts remain available in their existing modal.
+
+Frontend typecheck, ESLint, all 56 tests and production Docker web rebuild/restart passed. Read-only Chrome checks on PJ-1 verified details as a page with no initial dialog, exactly one approval-confirmation dialog, cancellation preserving the reason, and Back retaining the 50-row display selection. No decision or financial write was submitted; no error-level browser logs were captured.
+
+## Success toast follow-up (2026-11-11)
+
+Non-financial loan successes (including approval/rejection) now use shadcn Sonner notifications at the top right, with EN/ID text, theme tokens, close control and a five-second duration. Financial receipts retain their read/print modal. Confirmations and uncertain-command recovery remain explicit dialogs. Frontend typecheck, ESLint and 56 tests passed; no approval was posted to trigger a visual test.
