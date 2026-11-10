@@ -1,4 +1,10 @@
 export const messages = {
+ "Tutup": "Close",
+ "Tidak dapat melanjutkan": "Unable to continue",
+ "Pulihkan permintaan": "Recover request",
+ "Pemulihan transaksi": "Transaction recovery",
+ "Mohon tunggu hingga proses selesai.": "Please wait for processing to finish.",
+ "Isi data pengajuan dan tinjau jadwal angsuran sebelum mengirim.": "Enter application details and review the installment schedule before submitting.",
  "Nominal harus antara Rp0 dan Rp1.000.000.000.000.": "Amount must be between IDR 0 and IDR 1,000,000,000,000.",
  "Nominal harus antara Rp1 dan Rp1.000.000.000.000.": "Amount must be between IDR 1 and IDR 1,000,000,000,000.",
  "Syarat disetujui": "Approved terms",

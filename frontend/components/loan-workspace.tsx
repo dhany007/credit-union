@@ -8,7 +8,10 @@ import type { Account, Application, Branch, Command, Receipt, Staff } from "@/li
 import { usePreferences } from "@/components/preferences";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ApplicationForm, ApplicationDetail } from "./loans/application";
+import { ApplicationForm } from "./loans/application-form";
+import { Modal } from "./modal";
+import { localizedError } from "@/lib/api-errors";
+import { ApplicationDetail } from "./loans/application";
 import { AccountDetail } from "./loans/account";
 import { LoanPolicies } from "./loans/policies";
 import { ErrorNotice, Field, Paged, selectClass, useRead } from "./loans/shared";
@@ -19,7 +22,7 @@ export function LoanWorkspace({ user, branches, approvalLimit, refresh }: {
     approvalLimit: number;
     refresh: () => Promise<void>;
 }) {
-    const { t, money } = usePreferences();
+    const { t, money, locale } = usePreferences();
     const [view, setView] = useState<View>("applications");
     const [filters, setFilters] = useState("");
     const [selected, setSelected] = useState<number | null>(null);
@@ -28,6 +31,7 @@ export function LoanWorkspace({ user, branches, approvalLimit, refresh }: {
     const [epoch, setEpoch] = useState(0);
     const [busy, setBusy] = useState(false);
     const [pending, setPending] = useState<Command | null>(null);
+    const [pendingHidden, setPendingHidden] = useState(false);
     const [ready, setReady] = useState(false);
     const [error, setError] = useState("");
     const [receipt, setReceipt] = useState<Receipt | null>(null);
@@ -55,6 +59,7 @@ export function LoanWorkspace({ user, branches, approvalLimit, refresh }: {
             return;
         lock.current = true;
         setBusy(true);
+        setPendingHidden(false);
         setError("");
         setReceipt(null);
         try {
@@ -91,16 +96,33 @@ export function LoanWorkspace({ user, branches, approvalLimit, refresh }: {
     function navigate(v: View) { setView(v); setSelected(null); setFilters(""); setIntake(false); setPolicies(false); }
     const listPath = (view === "accounts" ? "/loan-accounts" : "/loan-applications") + "?" + filters + (view === "payouts" ? "&payout_pending=true" : "");
     return <div className="space-y-5">
-    <ErrorNotice error={error}/>{pending && <section role="status" className="rounded border border-primary p-4 space-y-3">
-        <p>{t(busy ? "Menyimpan..." : "Hasil permintaan belum pasti. Jangan buat transaksi baru. Coba ulang dengan referensi yang sama.")}</p>
-        <p className="break-all text-xs">{pending.key}</p>
-        <Button disabled={busy} onClick={() => void submit(pending)}>{t("Coba ulang referensi yang sama")}</Button>
-        </section>}{receipt && <LoanReceipt key={receipt.reference ?? receipt.label} receipt={receipt} user={user} open={id => { navigate("accounts"); setSelected(id); }}/>}
+    {!pending && <ErrorNotice error={error} onClose={()=>setError("")}/>}
+    {pending && pendingHidden && <Button variant="outline" onClick={()=>setPendingHidden(false)}>{t("Pulihkan permintaan")}</Button>}
+    <Modal open={!!pending && !pendingHidden} onClose={()=>setPendingHidden(true)}
+      title={t(busy ? "Menyimpan..." : "Pemulihan transaksi")} blocked={busy}
+      footer={<Button disabled={busy} onClick={()=>{if(pending) void submit(pending);}}>{t("Coba ulang referensi yang sama")}</Button>}>
+      <p className="text-sm">{t(busy ? "Mohon tunggu hingga proses selesai." : "Hasil permintaan belum pasti. Jangan buat transaksi baru. Coba ulang dengan referensi yang sama.")}</p>
+      {error && <p role="alert" className="mt-3 text-sm text-destructive">{localizedError(locale,error)}</p>}
+      <p className="mt-3 break-all font-mono text-xs text-muted-foreground">{pending?.key}</p>
+    </Modal>
+    <Modal open={!!receipt} onClose={()=>setReceipt(null)} title={t("Permintaan berhasil dicatat")} wide={!!receipt?.loan_id}>
+      {receipt && <LoanReceipt key={receipt.reference ?? receipt.label} receipt={receipt} user={user}
+        open={id=>{setReceipt(null);navigate("accounts");setSelected(id);}}/>}
+    </Modal>
+    <Modal open={intake} onClose={()=>setIntake(false)} title={t("Pengajuan pinjaman reguler")}
+      description={t("Isi data pengajuan dan tinjau jadwal angsuran sebelum mengirim.")} wide scrollable={false} blocked={busy}>
+      <ApplicationForm user={user} branches={branches} execute={execute} onCancel={()=>setIntake(false)} blocked={busy || !!pending}/>
+    </Modal>
+    <Modal open={selected !== null} onClose={()=>setSelected(null)} title={t("Rincian pinjaman")} wide blocked={busy}>
+      <fieldset disabled={busy || !!pending} className="min-w-0">
+        {selected && <Detail key={view + selected + epoch} id={selected} view={view} user={user} limit={approvalLimit} execute={execute} onReceipt={value=>{setSelected(null);setReceipt(value);}}/>}
+      </fieldset>
+    </Modal>
 
  <fieldset disabled={!ready || busy || !!pending} className="no-print space-y-5 min-w-0">
     <legend className="sr-only">{t("Pinjaman")}</legend>
     <nav className="flex flex-wrap gap-2" aria-label={t("Layanan pinjaman")}>{(["applications", "payouts", "accounts"] as const).map((v, i) => <Button key={v} aria-pressed={view === v && !policies} variant={view === v && !policies ? "default" : "outline"} onClick={() => navigate(v)}>{[t("Pengajuan"), t("Pencairan"), t("Daftar pinjaman")][i]}</Button>)}{user.role === "supervisor" && <Button variant={policies ? "default" : "outline"} onClick={() => { setPolicies(!policies); setSelected(null); }}>{t("Tarif bunga pinjaman")}</Button>}</nav>
- {policies ? <LoanPolicies key={epoch} execute={execute}/> : <>{user.role === "teller" && view === "applications" && <Button variant="outline" onClick={() => setIntake(!intake)}>{t("Ajukan pinjaman")}</Button>}{intake && <ApplicationForm user={user} branches={branches} execute={execute}/>}
+ {policies ? <LoanPolicies key={epoch} execute={execute}/> : <>{user.role === "teller" && view === "applications" && <Button variant="outline" onClick={() => setIntake(!intake)}>{t("Ajukan pinjaman")}</Button>}
  <form key={view} className="flex flex-wrap items-end gap-3" onSubmit={e => {
                 e.preventDefault();
                 const d = Object.fromEntries(new FormData(e.currentTarget));
@@ -141,7 +163,7 @@ export function LoanWorkspace({ user, branches, approvalLimit, refresh }: {
                 </tr>)}</tbody>
             </table>
             </div>}</Paged>
- {selected && <Detail key={view + selected + epoch} id={selected} view={view} user={user} limit={approvalLimit} execute={execute} onReceipt={setReceipt}/>}</>}
+ </>}
  </fieldset>
     </div>;
 }

@@ -23,7 +23,7 @@ export function LoanPolicies({ execute }: {
     execute: Execute;
 }) {
     const { t, money } = usePreferences();
-    const { data, error } = useRead<Page<Policy>>("/loan-interest/policies");
+    const { data } = useRead<Page<Policy>>("/loan-interest/policies");
     const [bands, setBands] = useState<{
         min: string;
         max: string;
@@ -33,7 +33,7 @@ export function LoanPolicies({ execute }: {
     return <section className="space-y-5 rounded border p-5">
     <h3 className="font-semibold">{t("Tarif bunga pinjaman")}</h3>
     <p className="text-sm text-muted-foreground">{t("Tarif minimal 3% p.a. untuk seluruh pokok sesuai rentang nominal. Berlaku paling cepat besok; pinjaman lama tidak berubah.")}</p>
-    <ErrorNotice error={error ?? invalid}/>
+    <ErrorNotice error={invalid} onClose={()=>setInvalid("")}/>
     <form className="space-y-4" onSubmit={e => {
             e.preventDefault();
             const d = Object.fromEntries(new FormData(e.currentTarget));

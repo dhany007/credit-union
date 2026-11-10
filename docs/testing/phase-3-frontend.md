@@ -47,3 +47,17 @@ The effective UAT fixture policy date was advanced directly in the disposable te
 ## Limits
 
 Restructuring execution, penalties, write-offs and reversal actions remain outside this delivery. Physical cash handover and live-money operational acceptance are outside synthetic UAT. Automated component/E2E tooling was not added; browser scenarios were exercised with the connected Chrome UI. A dedicated narrow-viewport and assistive-technology audit remains separate.
+
+## Modal interaction follow-up (2026-11-10)
+
+- Added shadcn-style Dialog primitives backed by the existing Radix dependency; no dependency/lockfile changes.
+- Application intake opens in a wide dialog with scrollable body and persistent Cancel / Preview / Submit footer.
+- Loan details and their review/confirmation steps open in a dialog. Successful commands, errors and uncertain-command recovery no longer insert notification panels above the workspace.
+- Tariff-save success has no Print action. Committed financial receipts retain printing and read-only retrieval.
+- Shared notifications cover member/cash actions, savings tariff saves, transaction read failures and login errors. Cash confirmation also uses a dialog.
+- During writes, closing/repeated submission is disabled. Uncertain results retain the original command key/body; dismissing the recovery modal leaves an explicit recovery action and new loan writes stay blocked.
+- Read/write validation: typecheck, ESLint and all 46 Node tests pass; production web image rebuild/restart and health check pass.
+- Connected Chrome UAT on the isolated port-3002 dataset verified initial focus, modal focus trapping, Escape dismissal, nested lookup errors preserving form values, formatted amount input, annuity preview, synthetic application PJ-26 submission and success dialog.
+- UAT verified ID/dark and EN/light; policy-save notification has zero Print buttons. Modal body remained within 90% of viewport height while the footer remained visible.
+- Synthetic IDR 1,000 cash deposit was confirmed through the new dialog and displayed the committed reference in a success dialog. No browser error-level console messages were captured.
+- Main financial rows were not used for these UAT writes. Printing was preserved in code; a physical printer and screen reader were not exercised.

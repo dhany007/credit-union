@@ -82,7 +82,7 @@ export function AccountDetail({ account: a, user, execute, onReceipt }: {
             </fieldset>
             <p className="text-sm text-muted-foreground">{t("Pembayaran dialokasikan ke jadwal tertua: bunga lalu pokok. Kelebihan pembayaran ditolak.")}</p>
             </form>}
- <ErrorNotice error={error}/>{preview && <section className="space-y-3 rounded border p-4">
+ <ErrorNotice error={error} onClose={()=>setError("")}/>{preview && <section className="space-y-3 rounded border p-4">
             <p>{t("Sisa pokok aktual")}: {money(preview.principal_before)} → {money(preview.principal_after)}</p>
             <p>{t("Sisa kewajiban terjadwal")}: {money(preview.outstanding_payable)}</p>
             <Allocations rows={preview.allocations}/>{!confirm ? <Button onClick={() => setConfirm(true)}>{t("Lanjutkan pembayaran")}</Button> : <section role="region" aria-label={t("Konfirmasi pinjaman")} tabIndex={-1} ref={node => node?.focus()} className="space-y-3">

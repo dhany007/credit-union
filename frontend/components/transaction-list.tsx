@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { usePreferences } from "@/components/preferences";
 import { api } from "@/lib/api";
-import { localizedError } from "@/lib/api-errors";
+import { ErrorNotice } from "@/components/modal";
 
 type TransactionRow = {
   reference: string;
@@ -165,13 +165,8 @@ export function TransactionList() {
           {t("Memuat transaksi...")}
         </div>
       ) : result.error ? (
-        <div
-          role="alert"
-          className="grid justify-items-center gap-4 p-8 text-sm"
-        >
-          <p className="text-destructive">
-            {localizedError(locale, result.error)}
-          </p>
+        <div className="grid justify-items-center gap-4 p-8 text-sm">
+          <ErrorNotice error={result.error}/>
           <Button
             type="button"
             variant="outline"

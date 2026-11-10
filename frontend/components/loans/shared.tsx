@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { localizedError } from "@/lib/api-errors";
+export { ErrorNotice } from "@/components/modal";
+import { ErrorNotice } from "@/components/modal";
 import { usePreferences } from "@/components/preferences";
 import { Button } from "@/components/ui/button";
 import type { Page, Installment, Preview, Allocation } from "@/lib/loans";
@@ -13,9 +14,6 @@ export function Field({ label, children }: {
     return <label className="grid gap-2 text-sm">
     <span className="font-medium">{label}</span>{children}</label>;
 }
-export function ErrorNotice({ error }: {
-    error: string;
-}) { const { locale } = usePreferences(); return error ? <p role="alert" className="rounded-md border border-destructive/40 p-3 text-sm text-destructive">{localizedError(locale, error)}</p> : null; }
 export function useRead<T>(path: string) {
     const [state, setState] = useState<{
         path: string;

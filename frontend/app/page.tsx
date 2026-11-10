@@ -26,7 +26,7 @@ import { AmountInput } from "@/components/amount-input";
 import { Input } from "@/components/ui/input";
 import { PreferenceControls, usePreferences } from "@/components/preferences";
 import { type Notice } from "@/lib/messages";
-import { localizedError } from "@/lib/api-errors";
+import { ErrorNotice, Notification, Modal } from "@/components/modal";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -93,7 +93,7 @@ function Field({
 }
 const TABLE_PAGE_SIZE = 20;
 export default function Home() {
-  const { t, money, ready, locale } = usePreferences();
+  const { t, money, ready } = usePreferences();
   const [user, setUser] = useState<User | null>(null),
     [boot, setBoot] = useState(true);
   const [tab, setTab] = useState("members"),
@@ -315,11 +315,7 @@ export default function Home() {
                   placeholder={t("Masukkan kata sandi")}
                 />
               </Field>
-              {error && (
-                <p role="alert" className="text-sm text-destructive">
-                  {localizedError(locale, error)}
-                </p>
-              )}
+              <ErrorNotice error={error} onClose={()=>setError("")}/>
               <Button disabled={busy} className="mt-2 h-11">
                 {busy ? (
                   <Loader2 className="animate-spin" />
@@ -496,19 +492,9 @@ export default function Home() {
                 </Button>
               )}
           </div>
-          {error && (
-            <div
-              role="alert"
-              className="mb-5 rounded-lg border border-destructive/40 bg-card p-4 text-sm text-destructive"
-            >
-              {localizedError(locale, error)}
-            </div>
-          )}
+          <ErrorNotice error={error} onClose={()=>setError("")}/>
           {success && (
-            <div
-              role="status"
-              className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border bg-card p-4 text-sm"
-            >
+            <Notification title={t("Permintaan berhasil dicatat")} onClose={()=>setSuccess(null)}>
               <Check size={18} />
               <span>
                 {t(success.key, {
@@ -532,7 +518,7 @@ export default function Home() {
                   {t("Cetak bukti")}
                 </Button>
               )}
-            </div>
+            </Notification>
           )}
           {tab === "members" && (
             <>
@@ -899,6 +885,7 @@ export default function Home() {
                     </Button>
                   </form>
                   <form
+                    id="cash-transaction"
                     className="grid gap-5"
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -977,25 +964,12 @@ export default function Home() {
                         placeholder={t("Keterangan transaksi")}
                       />
                     </Field>
-                    {confirmCash && (
-                      <div className="rounded-md border bg-secondary/30 p-4 text-sm leading-6">
-                        <p className="font-medium">
-                          {t("Konfirmasi")}{" "}
-                          {cashKind === "deposit"
-                            ? t("setoran")
-                            : t("penarikan")}
-                        </p>
-                        <p>
-                          {member?.name} · {member?.account_number} ·{" "}
-                          {money(Number(cashAmount))}
-                        </p>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {t(
-                            "Pastikan nominal dan uang tunai sudah diperiksa.",
-                          )}
-                        </p>
-                      </div>
-                    )}
+                    <Modal open={confirmCash} onClose={()=>setConfirmCash(false)} blocked={busy}
+                      title={t("Konfirmasi") + " " + t(cashKind === "deposit" ? "setoran" : "penarikan")}
+                      footer={<><Button type="button" variant="ghost" disabled={busy} onClick={()=>setConfirmCash(false)}>{t("Batal")}</Button><Button type="submit" form="cash-transaction" disabled={busy}>{t("Konfirmasi & simpan transaksi")}</Button></>}>
+                      <p>{member?.name} · {member?.account_number} · {money(Number(cashAmount))}</p>
+                      <p className="mt-3 text-sm text-muted-foreground">{t("Pastikan nominal dan uang tunai sudah diperiksa.")}</p>
+                    </Modal>
                     <Button
                       disabled={busy || user.role !== "teller" || !member}
                     >

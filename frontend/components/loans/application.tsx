@@ -1,108 +1,13 @@
 "use client";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { api } from "@/lib/api";
-import { jakartaToday, payoutBody, type Application, type Preview, type Staff, type Branch } from "@/lib/loans";
+import { jakartaToday, payoutBody, type Application, type Preview, type Staff } from "@/lib/loans";
 import { usePreferences } from "@/components/preferences";
 import { Button } from "@/components/ui/button";
 import { AmountInput } from "@/components/amount-input";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Field, ErrorNotice, SchedulePreview, selectClass, type Execute } from "./shared";
-type Member = {
-    id: number;
-    name: string;
-    account_number: string;
-};
-export function ApplicationForm({ user, branches, execute }: {
-    user: Staff;
-    branches: Branch[];
-    execute: Execute;
-}) {
-    const { t } = usePreferences();
-    const [account, setAccount] = useState("");
-    const [requestedAmount, setRequestedAmount] = useState("");
-    const [member, setMember] = useState<Member | null>(null);
-    const [error, setError] = useState("");
-    const [loading, setLoading] = useState(false);
-    const lookup = useRef(0);
-    const estimateVersion = useRef(0);
-    const [estimate, setEstimate] = useState<Preview | null>(null);
-    const [estimating, setEstimating] = useState(false);
-    async function find(e: React.FormEvent) {
-        e.preventDefault();
-        const version = ++lookup.current;
-        setLoading(true);
-        setError("");
-        try {
-            const m = await api<Member>("/members/by-account/" + account);
-            if (version === lookup.current)
-                setMember(m);
-        }
-        catch (e) {
-            if (version === lookup.current)
-                setError(e instanceof Error ? e.message : "Failed to fetch");
-        }
-        finally {
-            if (version === lookup.current)
-                setLoading(false);
-        }
-    }
-    return <section className="space-y-4 rounded-lg border p-5">
-    <h3 className="font-semibold">{t("Pengajuan pinjaman reguler")}</h3>
-    <form onSubmit={find} className="flex flex-wrap items-end gap-3">
-    <Field label={t("Nomor rekening")}>
-    <Input required pattern="[0-9]{10}" maxLength={10} value={account} onChange={e => { lookup.current++; estimateVersion.current++; setEstimate(null); setAccount(e.target.value); setMember(null); setLoading(false); }}/>
-    </Field>
-    <Button disabled={loading}>{t("Cari rekening")}</Button>
-    </form>
-    <ErrorNotice error={error}/>{member && <form className="grid gap-4 md:grid-cols-2" onChange={() => { estimateVersion.current++; setEstimate(null); }} onSubmit={e => { e.preventDefault(); const d = Object.fromEntries(new FormData(e.currentTarget)); void execute("/loans", { member_id: member.id, amount: Number(d.amount), tenor_months: Number(d.tenor), responsible_branch_id: Number(d.branch), purpose: d.purpose, risk: d.risk }); }}>
-        <p className="md:col-span-2">{member.name} · {member.account_number}</p>
-        <Field label={t("Nominal pengajuan (Rp)")}>
-        <AmountInput required name="amount" value={requestedAmount} onValueChange={setRequestedAmount}/>
-        </Field>
-        <Field label={t("Tenor yang diajukan (bulan)")}>
-        <Input required name="tenor" type="number" min={1} max={120} step={1} defaultValue={12}/>
-        </Field>
-        <Field label={t("KCP penanggung jawab")}>
-        <select name="branch" className={selectClass} defaultValue={user.branch_id}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
-        </Field>
-        <Field label={t("Risiko awal untuk diverifikasi Supervisor")}>
-        <select name="risk" className={selectClass}>
-        <option value="low">{t("Rendah")}</option>
-        <option value="medium">{t("Sedang")}</option>
-        <option value="high">{t("Tinggi")}</option>
-        </select>
-        </Field>
-        <Field label={t("Tujuan pinjaman")}>
-        <Textarea required name="purpose" minLength={5} maxLength={1000}/>
-        </Field>
-        <div className="md:col-span-2">
-        <Button type="button" variant="outline" disabled={estimating} onClick={async (e) => {
-                const form = e.currentTarget.form;
-                if (!form)
-                    return;
-                const d = new FormData(form);
-                const version = ++estimateVersion.current;
-                setEstimating(true);
-                setError("");
-                setEstimate(null);
-                try {
-                    const result = await api<Preview>("/loans/preview", { method: "POST", body: JSON.stringify({ amount: Number(d.get("amount")), tenor_months: Number(d.get("tenor")), expected_disbursement_date: jakartaToday() }) });
-                    if (version === estimateVersion.current)
-                        setEstimate(result);
-                }
-                catch (e) {
-                    if (version === estimateVersion.current)
-                        setError(e instanceof Error ? e.message : "Failed to fetch");
-                }
-                finally {
-                    setEstimating(false);
-                }
-            }}>{t("Preview anuitas")}</Button>
- <Button>{t("Kirim pengajuan")}</Button>
-        </div>
-        </form>}{estimate && <SchedulePreview key={JSON.stringify(estimate)} preview={estimate}/>}</section>;
-}
+import { Field, ErrorNotice, SchedulePreview, type Execute } from "./shared";
 export function ApplicationDetail({ application: a, user, limit, payout, execute }: {
     application: Application;
     user: Staff;
@@ -154,7 +59,7 @@ export function ApplicationDetail({ application: a, user, limit, payout, execute
         </div>
         </>}
  {(canDecide && !payout || payout && user.role === "teller" && !a.linked_loan_id) && <Button type="button" variant="outline" disabled={loading} onClick={calculate}>{t(payout ? "Periksa kelayakan pencairan" : "Preview anuitas")}</Button>}
- <ErrorNotice error={error}/>{preview && <SchedulePreview key={JSON.stringify(preview)} preview={preview}/>}
+ <ErrorNotice error={error} onClose={()=>setError("")}/>{preview && <SchedulePreview key={JSON.stringify(preview)} preview={preview}/>}
  {canDecide && !payout && <form className="space-y-4" onSubmit={e => { e.preventDefault(); setConfirm("approved"); }}>
         <Field label={t("Alasan keputusan")}>
         <Textarea required minLength={5} maxLength={1000} value={reason} onChange={e => { setReason(e.target.value); setConfirm(null); }}/>

@@ -11,7 +11,6 @@ export function LoanReceipt({ receipt, user, open }: {
     const { t, money, locale } = usePreferences();
     const { data, error } = useRead<Account>(receipt.loan_id ? "/loan-accounts/" + receipt.loan_id : "");
     return <section role="status" className="loan-receipt rounded-lg border p-5 space-y-3">
- <h3 className="font-semibold">{t("Permintaan berhasil dicatat")}</h3>
  <p>{receipt.repayment_number ?? receipt.loan_number ?? receipt.label}</p>
  {receipt.reference && <p>{t("Referensi")}: {receipt.reference}</p>}
  {receipt.loan_id && <>
@@ -20,6 +19,6 @@ export function LoanReceipt({ receipt, user, open }: {
  {(receipt.disbursed_at || receipt.paid_at) && <p>{new Date((receipt.disbursed_at || receipt.paid_at)!).toLocaleString(locale === "id" ? "id-ID" : "en-US", { timeZone: "Asia/Jakarta" })} WIB · {receipt.actor ?? user.name} · {receipt.branch ?? user.branch_name}</p>}
  {receipt.allocations && <Allocations rows={receipt.allocations}/>}
  <div className="no-print flex gap-3">
-    <Button variant="outline" disabled={!!receipt.loan_id && !data} onClick={() => window.print()}>{t("Cetak")}</Button>{receipt.loan_id && <Button variant="outline" onClick={() => open(receipt.loan_id!)}>{t("Lihat rincian")}</Button>}</div>
+    {receipt.reference && <Button variant="outline" disabled={!!receipt.loan_id && !data} onClick={() => window.print()}>{t("Cetak")}</Button>}{receipt.loan_id && <Button variant="outline" onClick={() => open(receipt.loan_id!)}>{t("Lihat rincian")}</Button>}</div>
  </section>;
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { localizedError } from "@/lib/api-errors";
+import { ErrorNotice, Notification } from "@/components/modal";
 import { nextJakartaDate, rateToBps } from "@/lib/interest";
 import { usePreferences } from "@/components/preferences";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ const initialBands: DraftBand[] = [
 ];
 
 export function InterestSettings() {
-  const { t, locale, money } = usePreferences();
+  const { t, money } = usePreferences();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [status, setStatus] = useState<Status | null>(null);
   const [effective, setEffective] = useState(nextJakartaDate);
@@ -109,12 +109,12 @@ export function InterestSettings() {
           <div><dt className="text-muted-foreground">{t("Perhitungan terakhir")}</dt><dd>{status.last_completed_date ?? "—"}</dd></div>
           <div><dt className="text-muted-foreground">{t("Bulan belum dikreditkan")}</dt><dd>{status.outstanding_months.join(", ") || "—"}</dd></div>
         </dl>
-        {status.failure_class && <p role="alert" className="text-destructive">{t("Perhitungan bunga gagal. Periksa log operasional.")}</p>}
+        {status.failure_class && <Notification key={status.failure_class} title={t("Tidak dapat melanjutkan")}><p>{t("Perhitungan bunga gagal. Periksa log operasional.")}</p></Notification>}
       </>}
       <p className="text-muted-foreground">{t("Bunga dihitung dari saldo penutupan harian, dibagi 365, dan dibulatkan sekali saat kredit bulanan. Bunga tidak menambah kas KCP.")}</p>
     </CardContent></Card>
-    {error && <p role="alert" className="text-sm text-destructive">{localizedError(locale, error)}</p>}
-    {saved && <p role="status" className="text-sm">{t("Versi tarif berhasil disimpan.")}</p>}
+    <ErrorNotice error={error} onClose={()=>setError("")}/>
+    {saved && <Notification title={t("Permintaan berhasil dicatat")} onClose={()=>setSaved(false)}><p>{t("Versi tarif berhasil disimpan.")}</p></Notification>}
     <Card><CardContent className="pt-6">
       <form onSubmit={save} className="grid gap-5">
         <h2 className="font-semibold">{t("Versi tarif baru")}</h2>
