@@ -1,4 +1,12 @@
 export const messages = {
+ "Data pengajuan": "Application details",
+ "Perhitungan angsuran": "Installment calculation",
+ "Tenor disetujui (bulan)": "Approved term (months)",
+ "Nominal pengajuan awal": "Original requested amount",
+ "Tenor pengajuan awal": "Original requested term",
+ "Sumber tarif": "Rate source",
+ "Tarif persetujuan": "Approved rate",
+ "Tarif global": "Base rate",
  "Estimasi jadwal angsuran": "Estimated installment schedule",
  "Menghitung jadwal angsuran...": "Calculating installment schedule...",
  "Isi nominal dan tenor yang valid untuk melihat jadwal.": "Enter a valid amount and term to view the schedule.",

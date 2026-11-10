@@ -76,16 +76,17 @@ export function ScheduleTable({ rows, actual = false }: {
     </table>
     </div>;
 }
-export function SchedulePreview({ preview }: {
+export function SchedulePreview({ preview, showSummary = true }: {
     preview: Preview;
+    showSummary?: boolean;
 }) {
     const { t, money } = usePreferences();
     const [page, setPage] = useState(0);
     return <section className="space-y-3 rounded-lg border p-4">
     <h3 className="font-semibold">{t("Estimasi jadwal angsuran")}</h3>
-    <p className="text-sm text-muted-foreground">{t("Estimasi jadwal; tanggal aktual dan pembulatan final ditentukan saat pencairan.")}</p>{preview.base_rate_fallback !== undefined && <p className="text-sm">{t(preview.base_rate_fallback ? "Menggunakan tarif global" : "Menggunakan tarif rentang nominal")}</p>}
+    <p className="text-sm text-muted-foreground">{t("Estimasi jadwal; tanggal aktual dan pembulatan final ditentukan saat pencairan.")}</p>{showSummary && <>{preview.base_rate_fallback !== undefined && <p className="text-sm">{t(preview.base_rate_fallback ? "Menggunakan tarif global" : "Menggunakan tarif rentang nominal")}</p>}
     <p>{money(preview.amount)} · {preview.tenor_months} {t("bulan")} · {preview.annual_rate_bps / 100}% p.a. · {t("Versi tarif")} #{preview.policy_id}</p>
-    <p className="text-sm">{t("Angsuran reguler")}: {money(preview.regular_installment_amount)} · {t("Total bunga")}: {money(preview.total_interest)} · {t("Total pembayaran")}: {money(preview.total_payable)}</p>
+    <p className="text-sm">{t("Angsuran reguler")}: {money(preview.regular_installment_amount)} · {t("Total bunga")}: {money(preview.total_interest)} · {t("Total pembayaran")}: {money(preview.total_payable)}</p></>}
     <ScheduleTable rows={preview.installments.slice(page * 20, (page + 1) * 20)}/>
     <div className="flex gap-2">
     <Button type="button" variant="outline" disabled={!page} onClick={() => setPage(page - 1)}>{t("Sebelumnya")}</Button>

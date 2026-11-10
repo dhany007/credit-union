@@ -78,3 +78,9 @@ Frontend typecheck, ESLint, all 46 Node tests and the production web rebuild/res
 - Frontend typecheck, ESLint, all 50 tests and production Docker rebuild/restart passed. New tests prove the debounce, cancellation, out-of-order-response and obsolete-error guarantees.
 - Read-only Chrome checks on local PJ-1 confirmed 12 rows appear without a preview click, invalid input removes the old table and disables approval, and changing to IDR 90,000,000 / six months automatically displays six installments. Original fields were restored without submitting a decision.
 - Isolated Chrome checks on disbursed LN-1 confirmed the stored 12-row schedule is visible while Summary remains selected. No new financial posting or approval was performed.
+
+## Compact application/calculation summary (2026-11-11)
+
+Application details combine the editable terms and server-generated calculations in one responsive two-column summary. The schedule below omits repeated amount, term, tariff and totals; the standalone intake preview retains its self-contained summary. Original requested terms appear only when they differ from the reviewed or approved terms.
+
+Typecheck, ESLint, all 50 tests and production Docker rebuild/restart passed. Read-only Chrome checks on PJ-1 verified two side-by-side definition lists with internally aligned colons, one regular-installment label, no repeated tariff-source paragraph, and automatic six-row schedule refresh after editing amount/term. Original inputs were restored without submitting a decision. No browser error-level logs were captured.

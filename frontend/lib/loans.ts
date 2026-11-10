@@ -14,6 +14,7 @@ export type Page<T> = {
     next_cursor: string;
 };
 export type Application = {
+    loan_interest_policy_id: number | null;
  approved_interest_rate_bps: number | null;
     id: number;
     application_number: string;

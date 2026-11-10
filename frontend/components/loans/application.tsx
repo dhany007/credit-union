@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { useLoanPreview } from "./use-loan-preview";
 import { jakartaToday, payoutBody, type Application, type Installment, type Staff } from "@/lib/loans";
 import { usePreferences } from "@/components/preferences";
@@ -32,47 +32,60 @@ export function ApplicationDetail({ application: a, user, limit, payout, execute
         estimatePreview && validTerms ? { amount: Number(amount), tenor_months: Number(tenor), expected_disbursement_date: jakartaToday() } : null,
     );
     function invalidate() { setConfirm(null); }
+    const editable = canDecide && !payout;
+    const principal = a.approved_amount ?? a.amount;
+    const months = a.approved_tenor_months ?? a.tenor_months;
+    const annualRate = preview?.annual_rate_bps ?? a.approved_interest_rate_bps;
+    const policyID = preview?.policy_id ?? a.loan_interest_policy_id;
+    const information: [string, ReactNode][] = [
+      [t("Nomor pengajuan"), a.application_number],
+      [t("Anggota"), a.member_name],
+      [t("Nomor rekening"), a.account_number],
+      [t(editable || a.approved_amount !== null ? "Pokok disetujui (Rp)" : "Nominal pengajuan"),
+        editable ? <AmountInput required aria-label={t("Pokok disetujui (Rp)")} value={amount} onValueChange={digits=>{setAmount(digits);invalidate();}}/> : money(principal)],
+      [t(editable ? "Tenor disetujui (bulan)" : "Tenor pinjaman"),
+        editable ? <Input required aria-label={t("Tenor disetujui (bulan)")} type="number" min={1} max={a.tenor_months} step={1} value={tenor} onChange={event=>{setTenor(event.target.value);invalidate();}}/> : months + " " + t("bulan")],
+      ...((editable ? Number(amount) !== a.amount : principal !== a.amount) ? [[t("Nominal pengajuan awal"), money(a.amount)] as [string,ReactNode]] : []),
+      ...((editable ? Number(tenor) !== a.tenor_months : months !== a.tenor_months) ? [[t("Tenor pengajuan awal"), a.tenor_months + " " + t("bulan")] as [string,ReactNode]] : []),
+      [t("KCP penerima"), a.receiving_branch],
+      [t("KCP penanggung jawab"), a.responsible_branch],
+      [t("Tujuan pinjaman"), a.purpose],
+      [t("Risiko"), t(a.risk === "high" ? "Tinggi" : a.risk === "medium" ? "Sedang" : "Rendah")],
+      ...(a.decision_reason ? [[t("Alasan keputusan"), a.decision_reason] as [string,ReactNode]] : []),
+    ];
+    const calculation: [string,ReactNode][] = [
+      [t("Bunga pinjaman"), annualRate == null ? "—" : annualRate / 100 + "% p.a."],
+      [t("Sumber tarif"), preview ? t(preview.base_rate_fallback === undefined ? "Tarif persetujuan" : preview.base_rate_fallback ? "Tarif global" : "Rentang nominal") : a.pricing_complete ? t("Tarif persetujuan") : "—"],
+      [t("Versi tarif"), policyID == null ? "—" : "#" + policyID],
+      [t("Angsuran reguler"), preview ? money(preview.regular_installment_amount) : "—"],
+      [t("Total bunga"), preview ? money(preview.total_interest) : "—"],
+      [t("Total pembayaran"), preview ? money(preview.total_payable) : "—"],
+      ...(editable ? [[t("Batas kewenangan"), money(limit)] as [string,ReactNode]] : []),
+    ];
     return <article className="rounded-lg border p-5">
     <fieldset aria-busy={loading} className="space-y-5 min-w-0">
     <section className="space-y-4" aria-label={t("Ringkasan pengajuan")}>
       <h3 className="font-semibold">{t("Ringkasan pengajuan")}</h3>
-      <dl className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-3 gap-y-3 text-sm sm:grid-cols-[12rem_minmax(0,1fr)]">
-        {[
-          [t("Nomor pengajuan"), a.application_number],
-          [t("Anggota"), a.member_name],
-          [t("Nomor rekening"), a.account_number],
-          [t("Nominal pengajuan"), money(a.amount)],
-          [t("Tenor pinjaman"), a.tenor_months + " " + t("bulan")],
-          [t("KCP penerima"), a.receiving_branch],
-          [t("KCP penanggung jawab"), a.responsible_branch],
-          [t("Tujuan pinjaman"), a.purpose],
-          [t("Risiko"), t(a.risk === "high" ? "Tinggi" : a.risk === "medium" ? "Sedang" : "Rendah")],
-          ...(canDecide && !payout ? [[t("Batas kewenangan"), money(limit)]] : []),
-          ...(a.approved_amount !== null ? [[t("Syarat disetujui"), money(a.approved_amount) + " · " + a.approved_tenor_months + " " + t("bulan") + " · " + (a.approved_interest_rate_bps??0)/100 + "% p.a."]] : []),
-          ...(a.decision_reason ? [[t("Alasan keputusan"), a.decision_reason]] : []),
-        ].map(([label, value]) => <Fragment key={label}>
-          <dt className="break-words text-muted-foreground">{label}</dt>
-          <dd className="grid min-w-0 grid-cols-[0.5rem_minmax(0,1fr)] gap-x-2">
-            <span aria-hidden="true">:</span><span className="break-words font-medium">{value}</span>
-          </dd>
-        </Fragment>)}
-      </dl>
+      <div className="grid gap-6 md:grid-cols-2">
+        {[{title:t("Data pengajuan"), rows:information},{title:t("Perhitungan angsuran"), rows:calculation}].map(column=>
+          <section key={column.title} className="min-w-0 space-y-3" aria-label={column.title}>
+            <h4 className="border-b pb-2 text-sm font-semibold">{column.title}</h4>
+            <dl className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-2 gap-y-3 text-sm">
+              {column.rows.map(([label,value])=><Fragment key={label}>
+                <dt className="self-center break-words text-muted-foreground">{label}</dt>
+                <dd className="grid min-w-0 grid-cols-[0.5rem_minmax(0,1fr)] items-center gap-x-2">
+                  <span aria-hidden="true">:</span><span className="min-w-0 break-words font-medium">{value}</span>
+                </dd>
+              </Fragment>)}
+            </dl>
+          </section>)}
+      </div>
     </section>
- {canDecide && !payout && <>
-        <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t("Pokok disetujui (Rp)")}>
-        <AmountInput required value={amount} onValueChange={digits => { setAmount(digits); invalidate(); }}/>
-        </Field>
-        <Field label={t("Tenor yang diajukan (bulan)")}>
-        <Input type="number" min={1} max={120} step={1} value={tenor} onChange={e => { setTenor(e.target.value); invalidate(); }}/>
-        </Field>
-        </div>
-        </>}
  {loading && <p role="status" className="text-sm text-muted-foreground">{t("Menghitung jadwal angsuran...")}</p>}
  {(estimatePreview && !validTerms) && <p className="text-sm text-muted-foreground">{t("Isi nominal dan tenor yang valid untuk melihat jadwal.")}</p>}
  <ErrorNotice error={error}/>
  {error && <Button type="button" variant="outline" onClick={()=>{setConfirm(null);retry();}}>{t("Muat ulang jadwal")}</Button>}
- {preview && <SchedulePreview key={JSON.stringify(preview)} preview={preview}/>}
+ {preview && <SchedulePreview key={JSON.stringify(preview)} preview={preview} showSummary={false}/>}
  {a.linked_loan_id && <section className="space-y-3">
    <h3 className="font-semibold">{t("Jadwal angsuran")}</h3>
    <Paged<Installment> path={"/loan-accounts/" + a.linked_loan_id + "/installments"} caption={t("Jadwal angsuran")}>{rows=><ScheduleTable rows={rows} actual/>}</Paged>
