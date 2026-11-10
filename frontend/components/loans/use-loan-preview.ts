@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { scheduleLoanPreview } from "@/lib/loan-preview";
+import { scheduleLoanPreview, selectLoanPreview } from "@/lib/loan-preview";
 import type { Preview } from "@/lib/loans";
 
 export function useLoanPreview(path: string, input: Record<string, string | number> | null) {
@@ -16,11 +16,9 @@ export function useLoanPreview(path: string, input: Record<string, string | numb
     return scheduleLoanPreview(
       signal => api<Preview>(path, { method: "POST", body: payload, signal }),
       preview => setResult({ key, preview }),
-      error => setResult({ key, error: error instanceof Error ? error.message : "Failed to fetch" }),
+      error => setResult(previous=>({ ...previous, key, error: error instanceof Error ? error.message : "Failed to fetch" })),
     );
   }, [path, payload, key]);
 
-  const preview = payload && result.key === key ? result.preview : undefined;
-  const error = payload && result.key === key ? result.error ?? "" : "";
-  return { preview, error, loading: !!payload && !preview && !error, retry: () => setAttempt(value => value + 1) };
+  return { ...selectLoanPreview(result,key,!!payload), retry: () => setAttempt(value => value + 1) };
 }

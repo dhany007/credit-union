@@ -1,15 +1,14 @@
 "use client";
 import { movementLabel, movementSign } from "@/lib/interest";
 
-import { useEffect, useState } from "react";
-import { Loader2, Search } from "lucide-react";
+import { useState } from "react";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { usePreferences } from "@/components/preferences";
-import { api } from "@/lib/api";
-import { ErrorNotice } from "@/components/modal";
+import { ServerRows } from "@/components/data-table";
 
 type TransactionRow = {
   reference: string;
@@ -29,11 +28,9 @@ type TransactionRow = {
 
 type Period = "today" | "last_7_days" | "last_30_days" | "custom";
 type Filters = { accountNumber: string; period: Period; startDate: string; endDate: string };
-type Query = Filters & { cursor: string; previous: string[] };
-type Page = { items: TransactionRow[]; next_cursor: string; start_date: string; end_date: string; time_zone: string };
+type Query = Filters;
 const initialFilters: Filters = { accountNumber: "", period: "today", startDate: "", endDate: "" };
-const initialQuery = (): Query => ({ ...initialFilters, cursor: "", previous: [] });
-type Result = { query: Query | null; rows: TransactionRow[]; page: Page | null; error: string };
+const initialQuery = (): Query => ({ ...initialFilters });
 
 function clearDateValidity(input: HTMLInputElement) {
   const endInput = input.form?.elements.namedItem("end_date");
@@ -44,38 +41,10 @@ export function TransactionList() {
   const { t, money, locale } = usePreferences();
   const [draft, setDraft] = useState<Filters>(initialFilters);
   const [query, setQuery] = useState<Query>(initialQuery);
-  const [result, setResult] = useState<Result>({
-    query: null,
-    page: null,
-    rows: [],
-    error: "",
-  });
-  const loading = result.query !== query;
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams({ period: query.period });
-    if (query.accountNumber) params.set("account_number", query.accountNumber);
-    if (query.period === "custom") {
-      params.set("start_date", query.startDate);
-      params.set("end_date", query.endDate);
-    }
-    if (query.cursor) params.set("cursor", query.cursor);
-    api<Page>(`/transactions/search?${params}`, { signal: controller.signal })
-      .then((page) => {
-        if (!controller.signal.aborted) setResult({ query, rows: page.items, page, error: "" });
-      })
-      .catch((error) => {
-        if (!controller.signal.aborted)
-          setResult({
-            query,
-            rows: [],
-            page: null,
-            error: error instanceof Error ? error.message : "Unexpected error",
-          });
-      });
-    return () => controller.abort();
-  }, [query]);
+  const params=new URLSearchParams({period:query.period});
+  if(query.accountNumber)params.set("account_number",query.accountNumber);
+  if(query.period==="custom"){params.set("start_date",query.startDate);params.set("end_date",query.endDate);}
+  const path="/transactions/search?"+params.toString();
 
   function reset() {
     setDraft(initialFilters);
@@ -99,7 +68,7 @@ export function TransactionList() {
               endInput.reportValidity();
               return;
             }
-            setQuery({ ...draft, startDate, endDate, accountNumber: draft.accountNumber.trim(), cursor: "", previous: [] });
+            setQuery({ ...draft, startDate, endDate, accountNumber: draft.accountNumber.trim() });
           }}
         >
           <label className="grid w-full gap-2 text-sm sm:w-72">
@@ -139,7 +108,7 @@ export function TransactionList() {
                 onInput={(event) => clearDateValidity(event.currentTarget)} />
             </label>
           </>}
-          <Button type="submit" disabled={loading}>
+          <Button type="submit">
             <Search size={15} />
             {t("Terapkan filter")}
           </Button>
@@ -153,35 +122,13 @@ export function TransactionList() {
               ? t("Rekening: {account}", { account: query.accountNumber })
               : t("Semua rekening · seluruh KCP")}
           </p>
-          <p>{!loading && result.page ? `${result.page.start_date} — ${result.page.end_date} · Asia/Jakarta (WIB)` : t("Zona waktu: Asia/Jakarta (WIB)")}</p>
+          <p>{query.period==="custom" ? query.startDate+" — "+query.endDate+" · Asia/Jakarta (WIB)" : t("Zona waktu: Asia/Jakarta (WIB)")}</p>
         </div>
       </div>
-      {loading ? (
-        <div
-          role="status"
-          className="flex items-center justify-center gap-2 p-12 text-sm text-muted-foreground"
-        >
-          <Loader2 className="animate-spin" aria-hidden="true" size={18} />
-          {t("Memuat transaksi...")}
-        </div>
-      ) : result.error ? (
-        <div className="grid justify-items-center gap-4 p-8 text-sm">
-          <ErrorNotice error={result.error}/>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setQuery({ ...query })}
-          >
-            {t("Coba lagi")}
-          </Button>
-        </div>
-      ) : (
-        <>
+      <ServerRows<TransactionRow> path={path} label={t("Riwayat transaksi simpanan")}>{(rows,dates)=>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1080px] text-left text-sm">
-              <caption className="sr-only">
-                {t("Riwayat transaksi simpanan")}
-              </caption>
+              <caption className="py-2 text-left text-xs text-muted-foreground">{t("Riwayat transaksi simpanan")}{dates ? " · "+dates.start+" — "+dates.end+" · Asia/Jakarta (WIB)" : ""}</caption>
               <thead className="bg-secondary/40 text-[11px] uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th scope="col" className="p-4 pl-5 font-medium">
@@ -207,7 +154,7 @@ export function TransactionList() {
                 </tr>
               </thead>
               <tbody>
-                {result.rows.map((row) => (
+                {rows.map((row) => (
                   <tr key={row.reference} className="border-t align-top">
                     <td className="whitespace-nowrap p-4 pl-5 text-xs">
                       {new Intl.DateTimeFormat(locale === "en" ? "en-US" : "id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(row.created_at))}
@@ -252,7 +199,7 @@ export function TransactionList() {
                     </td>
                   </tr>
                 ))}
-                {result.rows.length === 0 && (
+                {rows.length === 0 && (
                   <tr>
                     <td
                       colSpan={8}
@@ -267,24 +214,7 @@ export function TransactionList() {
               </tbody>
             </table>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t px-5 py-4 text-xs text-muted-foreground">
-            <p role="status">{t("Halaman {page} · {count} transaksi", { page: query.previous.length + 1, count: result.rows.length })}</p>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" disabled={query.previous.length === 0}
-                onClick={() => {
-                  if (!result.page) return;
-                  setQuery({ ...query, period: "custom", startDate: result.page.start_date, endDate: result.page.end_date,
-                    cursor: query.previous[query.previous.length - 1], previous: query.previous.slice(0, -1) });
-                }}>{t("Sebelumnya")}</Button>
-              <Button type="button" variant="outline" size="sm" disabled={!result.page?.next_cursor}
-                onClick={() => {
-                  if (!result.page?.next_cursor) return;
-                  setQuery({ ...query, period: "custom", startDate: result.page.start_date, endDate: result.page.end_date,
-                    cursor: result.page.next_cursor, previous: [...query.previous, query.cursor] });
-                }}>{t("Berikutnya")}</Button>
-            </div>
-          </div>        </>
-      )}
+      }</ServerRows>
     </Card>
   );
 }

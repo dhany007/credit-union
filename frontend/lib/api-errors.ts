@@ -1,6 +1,7 @@
 import type { Locale } from "@/lib/messages";
 
 const errors: Record<string, string> = {
+ "Invalid member pagination cursor": "Halaman anggota tidak valid. Terapkan filter kembali.",
   "Request reference storage unavailable": "Penyimpanan referensi permintaan tidak tersedia. Aktifkan penyimpanan sesi sebelum bertransaksi.",
   "Invalid request reference": "Referensi permintaan tersimpan tidak valid. Hubungi pengelola sebelum bertransaksi.",
   "Invalid loan interest policy": "Aturan bunga pinjaman tidak valid. Bunga minimal 3% p.a. dan batas nominal harus valid.",

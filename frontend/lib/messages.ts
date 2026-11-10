@@ -1,4 +1,9 @@
 export const messages = {
+ "Baris per halaman": "Rows per page",
+ "Halaman {page} · {count} data": "Page {page} · {count} records",
+ "Memuat data...": "Loading data...",
+ "Gagal memuat data. Silakan coba lagi.": "Unable to load data. Please retry.",
+ "Anggota dari seluruh KCP": "Members across all branches",
  "Data pengajuan": "Application details",
  "Perhitungan angsuran": "Installment calculation",
  "Tenor disetujui (bulan)": "Approved term (months)",

@@ -84,3 +84,16 @@ Frontend typecheck, ESLint, all 46 Node tests and the production web rebuild/res
 Application details combine the editable terms and server-generated calculations in one responsive two-column summary. The schedule below omits repeated amount, term, tariff and totals; the standalone intake preview retains its self-contained summary. Original requested terms appear only when they differ from the reviewed or approved terms.
 
 Typecheck, ESLint, all 50 tests and production Docker rebuild/restart passed. Read-only Chrome checks on PJ-1 verified two side-by-side definition lists with internally aligned colons, one regular-installment label, no repeated tariff-source paragraph, and automatic six-row schedule refresh after editing amount/term. Original inputs were restored without submitting a decision. No browser error-level logs were captured.
+
+## Consistent table paging and retained estimates (2026-11-11)
+
+This follow-up supersedes the earlier 20-row defaults and removal of old estimates during recalculation.
+
+- Shared controls default to 10 rows, with 10 / 50 / 100 / All choices. Table viewports reserve ten row heights and use internal scrolling with sticky headers; All retains the active filters.
+- Server collections accumulate bounded cursor pages. GET /members accepts optional positive before_id while preserving its latest-100 array response for existing callers.
+- Previous successful estimates remain dimmed during recomputation or invalid input. Only the current successful estimate enables approval. Receipts still print all allocations.
+- Member pagination integration test demonstrated RED then GREEN. Full Go race suite, go vet and golangci-lint passed (zero lint issues).
+- Frontend typecheck, ESLint and all 56 tests passed; API and web production images rebuilt and restarted healthy on localhost:3000.
+- Isolated Chrome UAT used 151 synthetic members: 50 rows and All (151 rows) retained the same 778 px viewport; scrolling to the oldest row retained the sticky header and selecting that member loaded its profile beyond the bootstrap's first 100.
+- Loan tables initially displayed ten rows. Clearing the reviewed amount retained ten dimmed schedule rows with approval disabled. Changing the estimate to IDR 900,000 / six months retained the table while loading, then displayed six updated installments and enabled approval only after the response completed.
+- No approval or financial posting was submitted during these checks. No browser error-level logs were captured. EN/ID strings and existing light/dark tokens remain supported.

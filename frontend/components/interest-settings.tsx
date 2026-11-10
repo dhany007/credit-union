@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { ErrorNotice, Notification } from "@/components/modal";
 import { nextJakartaDate, rateToBps } from "@/lib/interest";
 import { usePreferences } from "@/components/preferences";
+import { LocalRows } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { AmountInput } from "@/components/amount-input";
 import { Input } from "@/components/ui/input";
@@ -125,16 +126,16 @@ export function InterestSettings() {
             <label className="grid gap-2 text-sm">{t("Tanggal berlaku")}<Input required type="date" min={nextJakartaDate()} value={effective} onChange={(e) => setEffective(e.target.value)} /></label>
             <label className="grid gap-2 text-sm">{t("Tarif global (% p.a.)")}<Input required inputMode="decimal" value={baseRate} onChange={(e) => setBaseRate(e.target.value)} /></label>
           </div>
-          <div className="overflow-x-auto"><table className="w-full min-w-[540px] text-left text-sm">
+          <LocalRows rows={bands.map((band,index)=>({band,index}))} label={t("Pengaturan tarif")}>{visible=><div className="overflow-x-auto"><table className="w-full min-w-[540px] text-left text-sm">
             <caption className="mb-3 text-left text-muted-foreground">{t("Rentang memakai batas bawah termasuk dan batas atas tidak termasuk. Di luar rentang menggunakan tarif global.")}</caption>
             <thead><tr><th scope="col" className="p-2">{t("Saldo mulai (Rp)")}</th><th scope="col" className="p-2">{t("Saldo hingga (Rp)")}</th><th scope="col" className="p-2">{t("Bunga (% p.a.)")}</th><th scope="col" className="p-2">{t("Tindakan")}</th></tr></thead>
-            <tbody>{bands.map((band, i) => <tr key={i}>
+            <tbody>{visible.map(({band,index:i}) => <tr key={i}>
               <td className="p-2"><AmountInput aria-label={t("Saldo mulai baris {row}", { row: i + 1 })} required minimum={0} value={band.minimum} onValueChange={(digits) => updateBand(i, "minimum", digits)} /></td>
               <td className="p-2"><AmountInput aria-label={t("Saldo hingga baris {row}", { row: i + 1 })} placeholder={t("Tanpa batas")} value={band.maximum} onValueChange={(digits) => updateBand(i, "maximum", digits)} /></td>
               <td className="p-2"><Input aria-label={t("Bunga baris {row}", { row: i + 1 })} required inputMode="decimal" value={band.rate} onChange={(e) => updateBand(i, "rate", e.target.value)} /></td>
               <td className="p-2"><Button type="button" variant="ghost" aria-label={t("Hapus rentang {row}", { row: i + 1 })} onClick={() => setBands((current) => current.filter((_, index) => index !== i))}>{t("Hapus")}</Button></td>
             </tr>)}</tbody>
-          </table></div>
+          </table></div>}</LocalRows>
           <Button type="button" variant="outline" className="justify-self-start" disabled={bands.length >= 20} onClick={() => setBands((current) => [...current, { minimum: "", maximum: "", rate: "3" }])}>{t("Tambah rentang")}</Button>
           <label className="grid gap-2 text-sm">{t("Alasan perubahan")}<Textarea required maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} /></label>
           <Button type="submit" className="justify-self-start">{t(busy ? "Menyimpan..." : "Simpan versi tarif")}</Button>

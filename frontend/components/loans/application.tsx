@@ -26,7 +26,7 @@ export function ApplicationDetail({ application: a, user, limit, payout, execute
     const validTerms = amount !== "" && tenor !== "" && Number.isSafeInteger(Number(amount)) &&
       Number(amount) >= 1 && Number(amount) <= 1000000000000 && Number.isInteger(Number(tenor)) &&
       Number(tenor) >= 1 && Number(tenor) <= 120;
-    const { preview, error, loading, retry } = useLoanPreview(
+    const { preview, displayPreview, error, loading, retry } = useLoanPreview(
       payout ? "/loan-applications/" + a.id + "/disbursement-preview" : "/loans/preview",
       payoutPreview ? { expected_approval_revision: a.approval_revision } :
         estimatePreview && validTerms ? { amount: Number(amount), tenor_months: Number(tenor), expected_disbursement_date: jakartaToday() } : null,
@@ -81,11 +81,12 @@ export function ApplicationDetail({ application: a, user, limit, payout, execute
           </section>)}
       </div>
     </section>
- {loading && <p role="status" className="text-sm text-muted-foreground">{t("Menghitung jadwal angsuran...")}</p>}
+ {loading && !displayPreview && <p role="status" className="text-sm text-muted-foreground">{t("Menghitung jadwal angsuran...")}</p>}
  {(estimatePreview && !validTerms) && <p className="text-sm text-muted-foreground">{t("Isi nominal dan tenor yang valid untuk melihat jadwal.")}</p>}
  <ErrorNotice error={error}/>
  {error && <Button type="button" variant="outline" onClick={()=>{setConfirm(null);retry();}}>{t("Muat ulang jadwal")}</Button>}
- {preview && <SchedulePreview key={JSON.stringify(preview)} preview={preview} showSummary={false}/>}
+ {displayPreview && <SchedulePreview preview={displayPreview} showSummary={false} loading={loading} stale={!preview}
+ statusText={error?t("Gagal memuat data. Silakan coba lagi."):!validTerms?t("Isi nominal dan tenor yang valid untuk melihat jadwal."):t("Menghitung jadwal angsuran...")}/>}
  {a.linked_loan_id && <section className="space-y-3">
    <h3 className="font-semibold">{t("Jadwal angsuran")}</h3>
    <Paged<Installment> path={"/loan-accounts/" + a.linked_loan_id + "/installments"} caption={t("Jadwal angsuran")}>{rows=><ScheduleTable rows={rows} actual/>}</Paged>

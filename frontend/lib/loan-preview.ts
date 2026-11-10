@@ -15,3 +15,9 @@ export function scheduleLoanPreview(
   }, 350);
   return () => { clearTimeout(timer); controller.abort(); };
 }
+
+export function selectLoanPreview(result: {key:string;preview?:Preview;error?:string}, key:string, enabled:boolean) {
+  const preview = enabled && result.key === key && !result.error ? result.preview : undefined;
+  const error = enabled && result.key === key ? result.error ?? "" : "";
+  return { preview, displayPreview:result.preview, error, loading:enabled && !preview && !error };
+}

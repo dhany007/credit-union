@@ -142,3 +142,16 @@
   [data-modal-content] .overflow-y-auto { max-height: none !important; overflow: visible !important; }
   [data-modal-overlay] { display: none !important; }
 }
+
+.table-viewport { overflow: auto; position: relative; scrollbar-gutter: stable; }
+.table-viewport .overflow-x-auto { overflow: visible; }
+.table-viewport thead { position: sticky; top: var(--table-caption-height,0px); z-index: 10; background: var(--card); }
+.table-viewport:not(:has(table)) { height: auto !important; max-height: 35rem; }
+.print-only { display: none; }
+@media print {
+ .table-viewport { height: auto !important; max-height: none !important; overflow: visible !important; }
+ .table-viewport thead { position: static; }
+ .print-only { display: block; }
+}
+
+.table-viewport caption:not(.sr-only) { position: sticky; top: 0; z-index: 11; background: var(--card); }
