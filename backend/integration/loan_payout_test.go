@@ -49,7 +49,12 @@ func TestLoanPayoutAndRepayment(t *testing.T) {
 		200,
 	)
 	path := fmt.Sprintf("/api/loan-applications/%d", app.ID)
-	w = f.call("teller.a", "POST", path+"/disbursement-preview", "", `{"expected_approval_revision":1}`)
+	requireStatus(
+		t,
+		f.call("teller.a", "POST", path+"/disbursement-preview", "", `{"expected_approval_revision":1}`),
+		403,
+	)
+	w = f.call("supervisor", "POST", path+"/disbursement-preview", "", `{"expected_approval_revision":1}`)
 	requireStatus(t, w, 200)
 	var preview struct {
 		Date string `json:"payout_date"`
@@ -61,8 +66,22 @@ func TestLoanPayoutAndRepayment(t *testing.T) {
  "expected_principal":1000000,"expected_tenor_months":12,"expected_payout_date":"%s",
  "recipient_verified":true,"agreement_signed":true,"conditions_verified":true,
  "verification_note":"Identity and signed agreement verified","note":"Synthetic payout"}`, policyID, preview.Date)
-	requireStatus(t, f.call("supervisor", "POST", path+"/disburse", "phase3-payout-wrong", payout), 403)
-	w = f.call("teller.a", "POST", path+"/disburse", "phase3-payout-key-01", payout)
+	for _, status := range []string{"submitted", "rejected"} {
+		if _, err = f.db.Exec(ctx, "UPDATE loan_applications SET status=$1 WHERE id=$2", status, app.ID); err != nil {
+			t.Fatal(err)
+		}
+		requireStatus(
+			t,
+			f.call("supervisor", "POST", path+"/disbursement-preview", "", `{"expected_approval_revision":1}`),
+			422,
+		)
+		requireStatus(t, f.call("supervisor", "POST", path+"/disburse", "blocked-status-"+status, payout), 422)
+	}
+	if _, err = f.db.Exec(ctx, "UPDATE loan_applications SET status='approved' WHERE id=$1", app.ID); err != nil {
+		t.Fatal(err)
+	}
+	requireStatus(t, f.call("teller.a", "POST", path+"/disburse", "phase3-payout-wrong", payout), 403)
+	w = f.call("supervisor", "POST", path+"/disburse", "phase3-payout-key-01", payout)
 	requireStatus(t, w, 200)
 	var paid struct {
 		ID        int64  `json:"loan_id"`
@@ -71,14 +90,20 @@ func TestLoanPayoutAndRepayment(t *testing.T) {
 	if err = json.Unmarshal(w.Body.Bytes(), &paid); err != nil {
 		t.Fatal(err)
 	}
-	replay := f.call("teller.a", "POST", path+"/disburse", "phase3-payout-key-01", payout)
+	replay := f.call("supervisor", "POST", path+"/disburse", "phase3-payout-key-01", payout)
 	requireStatus(t, replay, 200)
-	requireStatus(t, f.call("teller.a", "POST", path+"/disburse", "phase3-payout-key-02", payout), 409)
+	requireStatus(t, f.call("supervisor", "POST", path+"/disburse", "phase3-payout-key-02", payout), 409)
 	loanPath := fmt.Sprintf("/api/loan-accounts/%d", paid.ID)
 	requireStatus(t, f.call("teller.a", "GET", loanPath, "", ""), 200)
 	requireStatus(t, f.call("teller.a", "GET", loanPath+"/installments", "", ""), 200)
 	requireStatus(t, f.call("teller.a", "GET", loanPath+"/schedule-versions", "", ""), 200)
-	w = f.call("teller.b", "POST", loanPath+"/repayment-preview", "", `{"amount":50000}`)
+	// The same Supervisor services repayment from another KCP without changing loan ownership.
+	if _, err = f.db.Exec(ctx, "UPDATE users SET branch_id=2 WHERE id=$1", f.ids["supervisor"]); err != nil {
+		t.Fatal(err)
+	}
+	requireStatus(t, f.call("teller.b", "POST", loanPath+"/repayment-preview", "", `{"amount":50000}`), 403)
+	requireStatus(t, f.call("teller.b", "POST", loanPath+"/repayments", "teller-blocked-pay01", `{}`), 403)
+	w = f.call("supervisor", "POST", loanPath+"/repayment-preview", "", `{"amount":50000}`)
 	requireStatus(t, w, 200)
 	var plan struct {
 		Version int64 `json:"current_schedule_version_id"`
@@ -91,11 +116,11 @@ func TestLoanPayoutAndRepayment(t *testing.T) {
 "note":"Partial at another KCP"}`,
 		plan.Version,
 	)
-	w = f.call("teller.b", "POST", loanPath+"/repayments", "phase3-payment-key01", payment)
+	w = f.call("supervisor", "POST", loanPath+"/repayments", "phase3-payment-key01", payment)
 	requireStatus(t, w, 200)
-	requireStatus(t, f.call("teller.b", "POST", loanPath+"/repayments", "phase3-payment-key01", payment), 200)
-	requireStatus(t, f.call("teller.b", "POST", loanPath+"/repayments", "phase3-payment-key02", payment), 409)
-	requireStatus(t, f.call("teller.a", "POST", loanPath+"/repayment-preview", "", `{"amount":999999999}`), 422)
+	requireStatus(t, f.call("supervisor", "POST", loanPath+"/repayments", "phase3-payment-key01", payment), 200)
+	requireStatus(t, f.call("supervisor", "POST", loanPath+"/repayments", "phase3-payment-key02", payment), 409)
+	requireStatus(t, f.call("supervisor", "POST", loanPath+"/repayment-preview", "", `{"amount":999999999}`), 422)
 	requireStatus(t, f.call("teller.a", "GET", loanPath+"/repayments", "", ""), 200)
 	var balance, principal, interest, unbalanced int64
 	if err = f.db.QueryRow(ctx, "SELECT balance FROM members WHERE id=$1", member).Scan(&balance); err != nil {
