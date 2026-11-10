@@ -1,4 +1,5 @@
 "use client";
+import { LoanWorkspace } from "@/components/loan-workspace";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -9,7 +10,6 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  CircleHelp,
   CreditCard,
   Landmark,
   Loader2,
@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PreferenceControls, usePreferences } from "@/components/preferences";
-import { type MessageKey, type Notice } from "@/lib/messages";
+import { type Notice } from "@/lib/messages";
 import { localizedError } from "@/lib/api-errors";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -58,20 +58,6 @@ type Meta = {
   branch_cash: number;
   approval_limit: number;
 };
-type Loan = {
-  id: number;
-  member_id: number;
-  member_name: string;
-  amount: number;
-  tenor_months: number;
-  purpose: string;
-  risk: string;
-  status: string;
-  receiving_branch: string;
-  responsible_branch: string;
-  decision_reason: string;
-  decision_by: string;
-};
 type Transaction = {
   balance_before: number | null;
   balance_after: number | null;
@@ -86,7 +72,6 @@ type Transaction = {
 function loadWorkspace(searchQuery: string, signal?: AbortSignal) {
   return Promise.all([
     api<Member[]>(`/members?search=${encodeURIComponent(searchQuery)}`, { signal }),
-    api<Loan[]>("/loans", { signal }),
     api<Meta>("/meta", { signal }),
   ]);
 }
@@ -105,25 +90,13 @@ function Field({
     </label>
   );
 }
-const riskLabels: Record<string, MessageKey> = {
-  low: "Rendah",
-  medium: "Sedang",
-  high: "Tinggi",
-};
 const TABLE_PAGE_SIZE = 20;
-const selectClass = "h-10 w-full rounded-md border bg-card px-3 text-sm";
-const statuses: Record<string, MessageKey> = {
-  submitted: "Menunggu keputusan",
-  approved: "Disetujui",
-  rejected: "Ditolak",
-};
 export default function Home() {
   const { t, money, ready, locale } = usePreferences();
   const [user, setUser] = useState<User | null>(null),
     [boot, setBoot] = useState(true);
   const [tab, setTab] = useState("members"),
     [members, setMembers] = useState<Member[]>([]),
-    [loans, setLoans] = useState<Loan[]>([]),
     [meta, setMeta] = useState<Meta | null>(null);
   const [selected, setSelected] = useState<number | null>(null),
     [historyResult, setHistoryResult] = useState<{
@@ -154,10 +127,6 @@ export default function Home() {
   const [cashAmount, setCashAmount] = useState(""),
     [cashNote, setCashNote] = useState(""),
     [confirmCash, setConfirmCash] = useState(false);
-  const [newLoan, setNewLoan] = useState(false),
-    [decision, setDecision] = useState<{ loan: Loan; value: string } | null>(
-      null,
-    );
   const [lastReceipt, setLastReceipt] = useState<string | null>(null);
   const requestRef = useRef<Record<string, { payload: string; key: string }>>(
     {},
@@ -169,9 +138,8 @@ export default function Home() {
     members.find((m) => m.id === selected) ??
     (resolvedMember?.id === selected ? resolvedMember : undefined);
   async function refresh(searchQuery = query) {
-    const [ms, ls, mt] = await loadWorkspace(searchQuery);
+    const [ms, mt] = await loadWorkspace(searchQuery);
     setMembers(ms);
-    setLoans(ls);
     setMeta(mt);
     return ms;
   }
@@ -185,10 +153,9 @@ export default function Home() {
     if (!user) return;
     const controller = new AbortController();
     loadWorkspace(query, controller.signal)
-      .then(([ms, ls, mt]) => {
+      .then(([ms, mt]) => {
         if (controller.signal.aborted) return;
         setMembers(ms);
-        setLoans(ls);
         setMeta(mt);
       })
       .catch((error) => {
@@ -249,7 +216,6 @@ export default function Home() {
     setError("");
     setSuccess(null);
     setConfirmCash(false);
-    setDecision(null);
   }
   async function lookupAccount() {
     if (busy) return;
@@ -465,7 +431,6 @@ export default function Home() {
                   setMembers([]);
                   setSelected(null);
                   setHistoryResult(null);
-                  setLoans([]);
                   setMeta(null);
                   setError("");
                   setSuccess(null);
@@ -512,16 +477,15 @@ export default function Home() {
                         )
                       : tab === "interest" ? t("Kelola tarif tahunan dan pantau kredit bunga bulanan.")
  : t(
-                          "Kelola pengajuan anggota. Pencairan belum tersedia pada fase ini.",
+                          "Kelola pengajuan, pencairan, dan pembayaran pinjaman.",
                         )}
               </p>
             </div>
             {user.role === "teller" &&
-              (tab === "members" || tab === "loans") && (
+              tab === "members" && (
                 <Button
                   onClick={() => {
                     if (tab === "members") setNewMember(!newMember);
-                    else setNewLoan(!newLoan);
                   }}
                 >
                   <Plus size={16} />
@@ -1066,314 +1030,7 @@ export default function Home() {
           )}
           {tab === "interest" && user.role === "supervisor" && <InterestSettings key={user.id} />}
 {tab === "transactions" && <TransactionList />}
-          {tab === "loans" && (
-            <>
-              {newLoan && user.role === "teller" && (
-                <Card className="mb-6">
-                  <CardContent className="pt-6">
-                    <h2 className="mb-5 text-lg font-semibold">
-                      {t("Pengajuan pinjaman reguler")}
-                    </h2>
-                    <form
-                      className="grid gap-5 md:grid-cols-2"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        const form = e.currentTarget;
-                        const d = Object.fromEntries(new FormData(form));
-                        run(async () => {
-                          const result = await mutate<{ id: number }>(
-                            "/loans",
-                            {
-                              member_id: Number(d.member_id),
-                              amount: Number(d.amount),
-                              tenor_months: Number(d.tenor_months),
-                              responsible_branch_id: Number(
-                                d.responsible_branch_id,
-                              ),
-                              purpose: d.purpose,
-                              risk: d.risk,
-                            },
-                          );
-                          setLastReceipt(null);
-                          setSuccess({
-                            key: "Pengajuan PJ-{id} diterima dan menunggu keputusan Supervisor.",
-                            values: { id: String(result.id) },
-                          });
-                          setNewLoan(false);
-                          await refresh();
-                        });
-                      }}
-                    >
-                      <Field label={t("Anggota")}>
-                        <select
-                          aria-label={t("Anggota peminjam")}
-                          name="member_id"
-                          className={selectClass}
-                          required
-                          defaultValue={selected || ""}
-                        >
-                          <option value="">{t("Pilih anggota")}</option>
-                          {members.map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.account_number} · {m.name}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                      <Field label={t("Nominal pengajuan (Rp)")}>
-                        <Input
-                          name="amount"
-                          type="number"
-                          min={1}
-                          max={1000000000000}
-                          step={1}
-                          required
-                        />
-                      </Field>
-                      <Field label={t("Tenor yang diajukan (bulan)")}>
-                        <Input
-                          name="tenor_months"
-                          type="number"
-                          min={1}
-                          max={120}
-                          step={1}
-                          required
-                          defaultValue={12}
-                        />
-                      </Field>
-                      <Field label={t("KCP penanggung jawab")}>
-                        <select
-                          name="responsible_branch_id"
-                          className={selectClass}
-                          defaultValue={user.branch_id}
-                        >
-                          {meta?.branches.map((b) => (
-                            <option key={b.id} value={b.id}>
-                              {b.name}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                      <Field
-                        label={t("Risiko awal untuk diverifikasi Supervisor")}
-                      >
-                        <select name="risk" className={selectClass}>
-                          <option value="low">{t("Rendah")}</option>
-                          <option value="medium">{t("Sedang")}</option>
-                          <option value="high">{t("Tinggi")}</option>
-                        </select>
-                      </Field>
-                      <Field label={t("Tujuan pinjaman")}>
-                        <Textarea
-                          name="purpose"
-                          minLength={5}
-                          maxLength={1000}
-                          required
-                        />
-                      </Field>
-                      <div className="flex gap-3 md:col-span-2">
-                        <Button disabled={busy}>{t("Kirim pengajuan")}</Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => setNewLoan(false)}
-                        >
-                          {t("Batal")}
-                        </Button>
-                      </div>
-                    </form>
-                  </CardContent>
-                </Card>
-              )}
-              <div className="mb-5 flex items-start gap-3 rounded-lg border p-4 text-xs leading-6 text-muted-foreground">
-                <CircleHelp size={18} className="mt-1 shrink-0" />
-                <span>
-                  {t(
-                    "Pencairan dan perhitungan bunga pinjaman belum diaktifkan.",
-                  )}{" "}
-                  {meta?.approval_limit
-                    ? t(
-                        "Persetujuan produk reguler risiko rendah dibatasi {amount}.",
-                        { amount: money(meta.approval_limit) },
-                      )
-                    : t(
-                        "Batas persetujuan belum ditetapkan; persetujuan diblokir sampai aturan dikonfigurasi.",
-                      )}
-                </span>
-              </div>
-              {decision && (
-                <Card className="mb-5">
-                  <CardContent className="pt-6">
-                    <h2 className="mb-2 font-semibold">
-                      {decision.value === "approved"
-                        ? t("Setujui")
-                        : t("Tolak")}{" "}
-                      PJ-{decision.loan.id} · {decision.loan.member_name}
-                    </h2>
-                    <p className="mb-4 text-sm text-muted-foreground">
-                      {money(decision.loan.amount)} · {t("risiko")}{" "}
-                      {t(riskLabels[decision.loan.risk])}
-                    </p>
-                    <form
-                      className="grid gap-4"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        const reason = new FormData(e.currentTarget).get(
-                          "reason",
-                        );
-                        run(async () => {
-                          await mutate(`/loans/${decision.loan.id}/decision`, {
-                            decision: decision.value,
-                            reason,
-                          });
-                          setLastReceipt(null);
-                          setSuccess({
-                            key: "Keputusan PJ-{id} tersimpan.",
-                            values: { id: String(decision.loan.id) },
-                          });
-                          setDecision(null);
-                          await refresh();
-                        });
-                      }}
-                    >
-                      <Field label={t("Alasan keputusan / hasil verifikasi")}>
-                        <Textarea
-                          name="reason"
-                          minLength={5}
-                          maxLength={1000}
-                          required
-                        />
-                      </Field>
-                      <div className="flex gap-3">
-                        <Button disabled={busy}>{t("Simpan keputusan")}</Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => setDecision(null)}
-                        >
-                          {t("Batal")}
-                        </Button>
-                      </div>
-                    </form>
-                  </CardContent>
-                </Card>
-              )}
-              <Card className="gap-0 overflow-hidden py-0">
-                <div className="border-b p-5">
-                  <h2 className="text-sm font-semibold">
-                    {t("Daftar pengajuan")}
-                  </h2>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {t("Semua KCP · pengajuan terbaru")}
-                  </p>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-secondary/40 text-[11px] uppercase tracking-wide text-muted-foreground">
-                      <tr>
-                        <th className="p-4 pl-5">{t("Anggota / pengajuan")}</th>
-                        <th className="p-4">{t("Nominal / tenor")}</th>
-                        <th className="p-4">{t("Penanggung jawab")}</th>
-                        <th className="p-4">{t("Status")}</th>
-                        <th className="p-4">
-                          <span className="sr-only">{t("Keputusan")}</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loans.map((l) => (
-                        <tr key={l.id} className="border-t">
-                          <td className="p-4 pl-5">
-                            <p className="font-medium">{l.member_name}</p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              PJ-{l.id} {t("· masuk")} {l.receiving_branch}
-                            </p>
-                            <p className="mt-2 max-w-xs text-xs text-muted-foreground">
-                              {l.purpose}
-                            </p>
-                          </td>
-                          <td className="p-4">
-                            <p className="font-mono text-xs">
-                              {money(l.amount)}
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {l.tenor_months} {t("bulan")} ·{" "}
-                              {t(riskLabels[l.risk])}
-                            </p>
-                          </td>
-                          <td className="p-4 text-xs">
-                            {l.responsible_branch}
-                          </td>
-                          <td className="p-4">
-                            <Badge
-                              variant={
-                                l.status === "approved" ? "default" : "outline"
-                              }
-                            >
-                              {t(statuses[l.status])}
-                            </Badge>
-                            {l.decision_reason && (
-                              <p className="mt-2 max-w-xs text-xs text-muted-foreground">
-                                {l.decision_by}: {l.decision_reason}
-                              </p>
-                            )}
-                          </td>
-                          <td className="p-4">
-                            {user.role === "supervisor" &&
-                              l.status === "submitted" && (
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    disabled={
-                                      busy ||
-                                      !meta?.approval_limit ||
-                                      l.amount > meta.approval_limit ||
-                                      l.risk !== "low"
-                                    }
-                                    onClick={() =>
-                                      setDecision({
-                                        loan: l,
-                                        value: "approved",
-                                      })
-                                    }
-                                  >
-                                    {t("Setujui")}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    disabled={busy}
-                                    onClick={() =>
-                                      setDecision({
-                                        loan: l,
-                                        value: "rejected",
-                                      })
-                                    }
-                                  >
-                                    {t("Tolak")}
-                                  </Button>
-                                </div>
-                              )}
-                          </td>
-                        </tr>
-                      ))}
-                      {loans.length === 0 && (
-                        <tr>
-                          <td
-                            colSpan={5}
-                            className="p-12 text-center text-muted-foreground"
-                          >
-                            <CreditCard className="mx-auto mb-3" />
-                            {t("Belum ada pengajuan pinjaman.")}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            </>
-          )}
+          {tab === "loans" && <LoanWorkspace key={user.id} user={user} branches={meta?.branches ?? []} approvalLimit={meta?.approval_limit ?? 0} refresh={async () => { await refresh(); }} />}
           <footer className="no-print mt-10 flex flex-wrap items-center justify-between gap-3 border-t pt-5 text-[10px] uppercase tracking-wider text-muted-foreground">
             <span>{t("Credit Union · Layanan anggota")}</span>
             <span className="flex items-center gap-2">

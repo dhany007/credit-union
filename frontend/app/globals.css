@@ -129,3 +129,9 @@
   --shadow-xs: var(--shadow-offset-x) var(--shadow-offset-y) var(--shadow-blur) var(--shadow-spread) color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
   --shadow-sm: var(--shadow-offset-x) var(--shadow-offset-y) var(--shadow-blur) var(--shadow-spread) color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
 }
+
+@media print {
+ main:has(.loan-receipt) > :not(:has(.loan-receipt)) { display: none; }
+ .loan-receipt { background: white; color: black; }
+ .loan-receipt .overflow-auto { max-height: none; overflow: visible; }
+}
