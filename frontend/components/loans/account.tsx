@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import { repaymentBody, type Account, type Installment, type Payment, type Version, type PaymentPreview, type Staff, type Receipt } from "@/lib/loans";
 import { usePreferences } from "@/components/preferences";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { AmountInput } from "@/components/amount-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Allocations, ErrorNotice, Field, Paged, ScheduleTable, type Execute } from "./shared";
 export function AccountDetail({ account: a, user, execute, onReceipt }: {
@@ -73,7 +73,7 @@ export function AccountDetail({ account: a, user, execute, onReceipt }: {
             <fieldset disabled={loading} className="grid gap-4 sm:grid-cols-2">
             <legend className="mb-3 font-semibold">{t("Catat pembayaran")}</legend>
             <Field label={t("Nominal pembayaran (Rp)")}>
-            <Input required type="number" min={1} max={1000000000000} step={1} value={amount} onChange={e => { setAmount(e.target.value); setPreview(null); setConfirm(false); }}/>
+            <AmountInput required value={amount} onValueChange={digits => { setAmount(digits); setPreview(null); setConfirm(false); }}/>
             </Field>
             <Field label={t("Catatan (opsional)")}>
             <Textarea maxLength={500} value={note} onChange={e => { setNote(e.target.value); setConfirm(false); }}/>

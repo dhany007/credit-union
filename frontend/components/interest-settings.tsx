@@ -6,6 +6,7 @@ import { localizedError } from "@/lib/api-errors";
 import { nextJakartaDate, rateToBps } from "@/lib/interest";
 import { usePreferences } from "@/components/preferences";
 import { Button } from "@/components/ui/button";
+import { AmountInput } from "@/components/amount-input";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -128,8 +129,8 @@ export function InterestSettings() {
             <caption className="mb-3 text-left text-muted-foreground">{t("Rentang memakai batas bawah termasuk dan batas atas tidak termasuk. Di luar rentang menggunakan tarif global.")}</caption>
             <thead><tr><th scope="col" className="p-2">{t("Saldo mulai (Rp)")}</th><th scope="col" className="p-2">{t("Saldo hingga (Rp)")}</th><th scope="col" className="p-2">{t("Bunga (% p.a.)")}</th><th scope="col" className="p-2">{t("Tindakan")}</th></tr></thead>
             <tbody>{bands.map((band, i) => <tr key={i}>
-              <td className="p-2"><Input aria-label={t("Saldo mulai baris {row}", { row: i + 1 })} required type="number" min="0" step="1" value={band.minimum} onChange={(e) => updateBand(i, "minimum", e.target.value)} /></td>
-              <td className="p-2"><Input aria-label={t("Saldo hingga baris {row}", { row: i + 1 })} type="number" min="1" step="1" placeholder={t("Tanpa batas")} value={band.maximum} onChange={(e) => updateBand(i, "maximum", e.target.value)} /></td>
+              <td className="p-2"><AmountInput aria-label={t("Saldo mulai baris {row}", { row: i + 1 })} required minimum={0} value={band.minimum} onValueChange={(digits) => updateBand(i, "minimum", digits)} /></td>
+              <td className="p-2"><AmountInput aria-label={t("Saldo hingga baris {row}", { row: i + 1 })} placeholder={t("Tanpa batas")} value={band.maximum} onValueChange={(digits) => updateBand(i, "maximum", digits)} /></td>
               <td className="p-2"><Input aria-label={t("Bunga baris {row}", { row: i + 1 })} required inputMode="decimal" value={band.rate} onChange={(e) => updateBand(i, "rate", e.target.value)} /></td>
               <td className="p-2"><Button type="button" variant="ghost" aria-label={t("Hapus rentang {row}", { row: i + 1 })} onClick={() => setBands((current) => current.filter((_, index) => index !== i))}>{t("Hapus")}</Button></td>
             </tr>)}</tbody>

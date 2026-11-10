@@ -1,16 +1,17 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, type ComponentProps } from "react";
 import { Input } from "@/components/ui/input";
 import { usePreferences } from "@/components/preferences";
-import { amountCaret, amountDigits, formatAmountInput } from "@/lib/amount-input";
+import { amountCaret, amountDigits, formatAmountInput, validAmountInput } from "@/lib/amount-input";
 
-export function AmountInput({ name, value, onValueChange, required = false }: {
+export function AmountInput({ name, value, onValueChange, required = false, minimum = 1, ...inputProps }: {
   name?: string;
   value: string;
   onValueChange: (digits: string) => void;
   required?: boolean;
-}) {
+  minimum?: 0 | 1;
+} & Pick<ComponentProps<"input">, "aria-label" | "placeholder" | "id">) {
   const { locale, t } = usePreferences();
   const input = useRef<HTMLInputElement>(null);
   const cursor = useRef<number | null>(null);
@@ -19,18 +20,18 @@ export function AmountInput({ name, value, onValueChange, required = false }: {
   useLayoutEffect(() => {
     const element = input.current;
     if (!element) return;
-    const valid = value === "" || (Number.isSafeInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 1000000000000);
-    element.setCustomValidity(valid ? "" : t("Nominal harus antara Rp1 dan Rp1.000.000.000.000."));
+    const valid = validAmountInput(value, minimum);
+    element.setCustomValidity(valid ? "" : t(minimum === 0 ? "Nominal harus antara Rp0 dan Rp1.000.000.000.000." : "Nominal harus antara Rp1 dan Rp1.000.000.000.000."));
     if (cursor.current !== null) {
       const position = amountCaret(formatted, cursor.current);
       element.setSelectionRange(position, position);
       cursor.current = null;
     }
-  }, [value, formatted, locale, t]);
+  }, [value, formatted, locale, minimum, t]);
 
   return <>
     {name && <input type="hidden" name={name} value={value} />}
-    <Input ref={input} type="text" inputMode="numeric" autoComplete="off" required={required}
+    <Input {...inputProps} ref={input} type="text" inputMode="numeric" autoComplete="off" required={required}
       value={formatted} onChange={event => {
         const digits = amountDigits(event.target.value);
         if (digits === null) return;

@@ -1,4 +1,5 @@
 export const messages = {
+ "Nominal harus antara Rp0 dan Rp1.000.000.000.000.": "Amount must be between IDR 0 and IDR 1,000,000,000,000.",
  "Nominal harus antara Rp1 dan Rp1.000.000.000.000.": "Amount must be between IDR 1 and IDR 1,000,000,000,000.",
  "Syarat disetujui": "Approved terms",
  "Bukti pencairan": "Payout receipt",

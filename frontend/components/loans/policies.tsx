@@ -3,6 +3,7 @@ import { useState } from "react";
 import { usePreferences } from "@/components/preferences";
 import { nextJakartaDate, rateToBps } from "@/lib/interest";
 import { Button } from "@/components/ui/button";
+import { AmountInput } from "@/components/amount-input";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ErrorNotice, Field, Paged, useRead, type Execute } from "./shared";
@@ -56,10 +57,10 @@ export function LoanPolicies({ execute }: {
     <p className="text-sm">{t("Rentang nominal menggunakan batas bawah termasuk dan batas atas tidak termasuk. Di luar rentang memakai tarif global.")}</p>{bands.map((b, i) => <fieldset key={i} className="grid gap-3 rounded border p-3 sm:grid-cols-4">
         <legend>{t("Rentang nominal")} {i + 1}</legend>
         <Field label={t("Nominal mulai (Rp)")}>
-        <Input required type="number" min={0} step={1} max={1000000000000} value={b.min} onChange={e => setBands(bands.map((x, j) => j === i ? { ...x, min: e.target.value } : x))}/>
+        <AmountInput required minimum={0} value={b.min} onValueChange={digits => setBands(bands.map((x, j) => j === i ? { ...x, min: digits } : x))}/>
         </Field>
         <Field label={t("Nominal hingga (Rp)")}>
-        <Input type="number" min={1} step={1} max={1000000000000} placeholder={t("Tanpa batas")} value={b.max} onChange={e => setBands(bands.map((x, j) => j === i ? { ...x, max: e.target.value } : x))}/>
+        <AmountInput placeholder={t("Tanpa batas")} value={b.max} onValueChange={digits => setBands(bands.map((x, j) => j === i ? { ...x, max: digits } : x))}/>
         </Field>
         <Field label={t("Bunga (% p.a.)")}>
         <Input required type="number" min={3} max={100} step=".01" value={b.rate} onChange={e => setBands(bands.map((x, j) => j === i ? { ...x, rate: e.target.value } : x))}/>

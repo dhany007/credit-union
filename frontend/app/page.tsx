@@ -22,6 +22,7 @@ import {
   ReceiptText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AmountInput } from "@/components/amount-input";
 import { Input } from "@/components/ui/input";
 import { PreferenceControls, usePreferences } from "@/components/preferences";
 import { type Notice } from "@/lib/messages";
@@ -954,16 +955,12 @@ export default function Home() {
                       </div>
                     )}
                     <Field label={t("Nominal (Rp)")}>
-                      <Input
+                      <AmountInput
                         aria-label={t("Nominal transaksi")}
-                        type="number"
-                        min={1}
-                        max={1000000000000}
-                        step={1}
                         required
                         value={cashAmount}
-                        onChange={(e) => {
-                          setCashAmount(e.target.value);
+                        onValueChange={(digits) => {
+                          setCashAmount(digits);
                           setConfirmCash(false);
                         }}
                         placeholder="0"

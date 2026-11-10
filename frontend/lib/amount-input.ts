@@ -16,3 +16,7 @@ export function amountCaret(formatted: string, digitsBefore: number): number {
   }
   return formatted.length;
 }
+
+export function validAmountInput(value: string, minimum: 0 | 1 = 1): boolean {
+  return value === "" || (/^\d+$/.test(value) && Number.isSafeInteger(Number(value)) && Number(value) >= minimum && Number(value) <= 1000000000000);
+}
