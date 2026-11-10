@@ -1,4 +1,9 @@
 export const messages = {
+ "Estimasi jadwal angsuran": "Estimated installment schedule",
+ "Menghitung jadwal angsuran...": "Calculating installment schedule...",
+ "Isi nominal dan tenor yang valid untuk melihat jadwal.": "Enter a valid amount and term to view the schedule.",
+ "Muat ulang jadwal": "Reload schedule",
+ "Jadwal kontrak tersedia setelah pencairan.": "The contractual schedule is available after disbursement.",
  "Ringkasan pengajuan": "Application summary",
  "Nomor pengajuan": "Application number",
  "Nominal pengajuan": "Requested amount",

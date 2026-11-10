@@ -82,7 +82,7 @@ export function SchedulePreview({ preview }: {
     const { t, money } = usePreferences();
     const [page, setPage] = useState(0);
     return <section className="space-y-3 rounded-lg border p-4">
-    <h3 className="font-semibold">{t("Preview anuitas")}</h3>
+    <h3 className="font-semibold">{t("Estimasi jadwal angsuran")}</h3>
     <p className="text-sm text-muted-foreground">{t("Estimasi jadwal; tanggal aktual dan pembulatan final ditentukan saat pencairan.")}</p>{preview.base_rate_fallback !== undefined && <p className="text-sm">{t(preview.base_rate_fallback ? "Menggunakan tarif global" : "Menggunakan tarif rentang nominal")}</p>}
     <p>{money(preview.amount)} · {preview.tenor_months} {t("bulan")} · {preview.annual_rate_bps / 100}% p.a. · {t("Versi tarif")} #{preview.policy_id}</p>
     <p className="text-sm">{t("Angsuran reguler")}: {money(preview.regular_installment_amount)} · {t("Total bunga")}: {money(preview.total_interest)} · {t("Total pembayaran")}: {money(preview.total_payable)}</p>

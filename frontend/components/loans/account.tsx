@@ -23,6 +23,7 @@ export function AccountDetail({ account: a, user, execute, onReceipt }: {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const root = "/loan-accounts/" + a.id;
+    const scheduleVersion = section === "summary" ? a.current_schedule_version_id : version;
     async function review(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
@@ -58,10 +59,10 @@ export function AccountDetail({ account: a, user, execute, onReceipt }: {
         <dt>{t("Pengajuan")}</dt>
         <dd>PJ-{a.application_id}</dd><dt>{t("Bukti pencairan")}</dt><dd><Button variant="outline" onClick={()=>onReceipt({loan_id:a.id,loan_number:a.loan_number,reference:a.disbursement_transaction_id,amount:a.principal_amount,disbursed_at:a.disbursed_at,actor:"#"+a.created_by,branch:"KCP #"+a.disbursing_branch_id})}>{t("Lihat bukti pencairan")}</Button></dd>
         </dl>}
- {section === "schedule" && <>
-        <p>{t("Versi jadwal")} #{version} <Button variant="ghost" onClick={() => setVersion(a.current_schedule_version_id)}>{t("Versi saat ini")}</Button>
+ {(section === "summary" || section === "schedule") && <>
+        <p>{t("Versi jadwal")} #{scheduleVersion} <Button variant="ghost" onClick={() => setVersion(a.current_schedule_version_id)}>{t("Versi saat ini")}</Button>
         </p>
-        <Paged<Installment> key={version} path={root + "/installments?schedule_version_id=" + version} caption={t("Jadwal angsuran")}>{rows => <ScheduleTable rows={rows} actual/>}</Paged>
+        <Paged<Installment> key={scheduleVersion} path={root + "/installments?schedule_version_id=" + scheduleVersion} caption={t("Jadwal angsuran")}>{rows => <ScheduleTable rows={rows} actual/>}</Paged>
         </>}
  {section === "versions" && <Paged<Version> path={root + "/schedule-versions"} caption={t("Riwayat versi")}>{rows => <div className="space-y-4">{rows.map(v => <section key={v.id} className="rounded border p-4 space-y-2">
                 <p>#{v.version_number} · {t(v.version_type === "initial" ? "Awal" : "Restrukturisasi")} · {v.is_current_version ? t("Versi saat ini") : t("Historis")}</p>

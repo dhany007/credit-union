@@ -67,3 +67,14 @@ Restructuring execution, penalties, write-offs and reversal actions remain outsi
 Application details now use a semantic label/value definition list with a dedicated aligned colon column. Approval authority is read fresh from /meta when application details open rather than reusing the workspace bootstrap value.
 
 Frontend typecheck, ESLint, all 46 Node tests and the production web rebuild/restart passed. Read-only Chrome verification of local PJ-1 confirmed every colon shares the same horizontal position and the displayed Supervisor limit is IDR 100,000,000. No approval or financial posting was performed during this layout check.
+
+## Automatic schedule display (2026-11-10)
+
+- Eligible application details load the server-generated estimate automatically. Changes to amount/term debounce for 350 ms, abort obsolete work and hide any result not bound to the current request. Inputs remain editable during recalculation.
+- Approval is disabled without a current successful schedule; an old confirmation cannot submit unpriced approval after inputs change. Failed calculations use the existing error modal and expose Reload schedule.
+- Account summary now displays the persisted current contractual schedule directly. Historical-version navigation remains available; summary always returns to the current version. A disbursed application's details also display its linked persisted schedule.
+- Estimates and committed schedules remain distinct. Read-only approved cases awaiting payout retain their approved terms; the Teller payout view loads the authoritative approved-pricing schedule automatically. No client-side loan calculation or repricing was added.
+- All tables retain the existing 20-row pagination; EN/ID labels and theme tokens are preserved.
+- Frontend typecheck, ESLint, all 50 tests and production Docker rebuild/restart passed. New tests prove the debounce, cancellation, out-of-order-response and obsolete-error guarantees.
+- Read-only Chrome checks on local PJ-1 confirmed 12 rows appear without a preview click, invalid input removes the old table and disables approval, and changing to IDR 90,000,000 / six months automatically displays six installments. Original fields were restored without submitting a decision.
+- Isolated Chrome checks on disbursed LN-1 confirmed the stored 12-row schedule is visible while Summary remains selected. No new financial posting or approval was performed.
