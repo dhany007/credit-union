@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { jakartaToday, payoutBody, type Application, type Preview, type Staff, type Branch } from "@/lib/loans";
 import { usePreferences } from "@/components/preferences";
 import { Button } from "@/components/ui/button";
+import { AmountInput } from "@/components/amount-input";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, ErrorNotice, SchedulePreview, selectClass, type Execute } from "./shared";
@@ -19,6 +20,7 @@ export function ApplicationForm({ user, branches, execute }: {
 }) {
     const { t } = usePreferences();
     const [account, setAccount] = useState("");
+    const [requestedAmount, setRequestedAmount] = useState("");
     const [member, setMember] = useState<Member | null>(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -56,7 +58,7 @@ export function ApplicationForm({ user, branches, execute }: {
     <ErrorNotice error={error}/>{member && <form className="grid gap-4 md:grid-cols-2" onChange={() => { estimateVersion.current++; setEstimate(null); }} onSubmit={e => { e.preventDefault(); const d = Object.fromEntries(new FormData(e.currentTarget)); void execute("/loans", { member_id: member.id, amount: Number(d.amount), tenor_months: Number(d.tenor), responsible_branch_id: Number(d.branch), purpose: d.purpose, risk: d.risk }); }}>
         <p className="md:col-span-2">{member.name} · {member.account_number}</p>
         <Field label={t("Nominal pengajuan (Rp)")}>
-        <Input required name="amount" type="number" min={1} max={1000000000000} step={1}/>
+        <AmountInput required name="amount" value={requestedAmount} onValueChange={setRequestedAmount}/>
         </Field>
         <Field label={t("Tenor yang diajukan (bulan)")}>
         <Input required name="tenor" type="number" min={1} max={120} step={1} defaultValue={12}/>
@@ -144,7 +146,7 @@ export function ApplicationDetail({ application: a, user, limit, payout, execute
         <p className="text-sm text-muted-foreground">{t("Batas kewenangan")}: {money(limit)}</p>
         <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t("Pokok disetujui (Rp)")}>
-        <Input required type="number" min={1} max={1000000000000} step={1} value={amount} onChange={e => { setAmount(e.target.value); invalidate(); }}/>
+        <AmountInput required value={amount} onValueChange={digits => { setAmount(digits); invalidate(); }}/>
         </Field>
         <Field label={t("Tenor yang diajukan (bulan)")}>
         <Input type="number" min={1} max={120} step={1} value={tenor} onChange={e => { setTenor(e.target.value); invalidate(); }}/>
