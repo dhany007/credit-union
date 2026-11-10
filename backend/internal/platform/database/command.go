@@ -49,6 +49,12 @@ func (r *Runner) Run(
 		return nil, fmt.Errorf("begin command: %w", err)
 	}
 	defer Rollback(tx)
+	if _, err = tx.Exec(ctx, "SELECT set_config('cu.actor_id',$1,true)", fmt.Sprint(cmd.ActorID)); err != nil {
+		return nil, fmt.Errorf("set audit actor: %w", err)
+	}
+	if _, err = tx.Exec(ctx, "SET LOCAL lock_timeout='5s'; SET LOCAL statement_timeout='15s'"); err != nil {
+		return nil, err
+	}
 	_, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`,
 		fmt.Sprintf("request:%d:%s", cmd.ActorID, cmd.Key))
 	if err != nil {
@@ -71,6 +77,15 @@ func (r *Runner) Run(
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("find command: %w", err)
+	}
+	var eligible bool
+	err = tx.QueryRow(ctx, `SELECT u.is_active AND u.deleted_at IS NULL AND b.is_active AND b.deleted_at IS NULL
+ FROM users u JOIN branches b ON b.id=u.branch_id WHERE u.id=$1 FOR SHARE OF u,b`, cmd.ActorID).Scan(&eligible)
+	if err != nil {
+		return nil, fmt.Errorf("check command actor: %w", err)
+	}
+	if !eligible {
+		return nil, fault.New(fault.Forbidden, "Staff or KCP is inactive")
 	}
 	result, err := work(tx)
 	if err != nil {

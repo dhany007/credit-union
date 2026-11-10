@@ -14,7 +14,8 @@ CREATE TEMP TABLE demo_actual_members ON COMMIT DROP AS
  JOIN members m ON m.id=ids.id::bigint;
 CREATE TEMP TABLE demo_actual_tx ON COMMIT DROP AS
  SELECT t.*,m.demo_ordinal,CASE u.username WHEN 'teller.a' THEN 1 WHEN 'teller.b' THEN 2 END staff_ordinal
- FROM transactions t JOIN demo_actual_members m ON m.id=t.member_id JOIN users u ON u.id=t.actor_id;
+ FROM transactions t JOIN demo_actual_members m ON m.id=t.member_id JOIN users u ON u.id=t.actor_id
+ WHERE t.kind IN ('deposit','withdrawal') AND t.note LIKE 'DEMO demo-2026-15x500-v1 %';
 
 DO $$ BEGIN
  IF (SELECT count(*) FROM demo_actual_members)<>15 OR (SELECT count(DISTINCT id) FROM demo_actual_members)<>15
@@ -43,7 +44,7 @@ DO $$ BEGIN
  OR t.branch_id<>m.home_branch_id OR t.created_at<>m.created_at))) THEN
  RAISE EXCEPTION 'Broken ledger chain or invalid opening deposit';END IF;
  IF EXISTS(SELECT 1 FROM demo_actual_members m WHERE m.balance<0 OR m.balance<>(SELECT sum(
- CASE kind WHEN 'withdrawal' THEN -amount ELSE amount END) FROM transactions t WHERE t.member_id=m.id)
+ CASE kind WHEN 'withdrawal' THEN -amount ELSE amount END) FROM transactions t WHERE t.member_id=m.id AND t.kind IN ('deposit','withdrawal','interest_credit'))
  OR (SELECT sum(CASE kind WHEN 'deposit' THEN amount ELSE -amount END) FROM demo_actual_tx t WHERE t.member_id=m.id)
  <>(SELECT balance_after FROM demo_actual_tx t WHERE t.member_id=m.id ORDER BY created_at DESC,id DESC LIMIT 1)) THEN
  RAISE EXCEPTION 'Member closing balance does not reconcile';END IF;

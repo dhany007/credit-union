@@ -69,6 +69,9 @@ func Error(c *gin.Context, err error) {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			status, message = 409, "Data already exists. Check the NIK or request reference."
+		} else if errors.As(err, &pgErr) && (pgErr.Code == "55P03" || pgErr.Code == "57014" ||
+			pgErr.Code == "40001" || pgErr.Code == "40P01") {
+			status, message = http.StatusServiceUnavailable, "Database busy; retry using the original reference."
 		}
 	}
 	if status >= http.StatusInternalServerError {

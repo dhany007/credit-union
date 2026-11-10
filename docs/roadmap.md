@@ -53,11 +53,13 @@ Implement the already agreed annual whole-balance savings interest model: daily 
 
 Add further features only when requested: richer reports, dedicated cash-session/closing screens, configurable approval administration, member portal, additional products, integrations, and advanced collections. Basic cash tracing and accounting correctness remain in Phase 1 even when richer operational screens are deferred.
 
-## Phase 3 — Lending lifecycle (proposed)
+## Phase 3 — Lending lifecycle
 
-Extend approved applications through verified disbursement and basic in-system repayment. Repayments remain available at every KCP; the loan's responsible KCP is retained. This phase is not ready for financial implementation until product pricing and allocation, disbursement conditions, repayment exceptions, chart-of-accounts mappings, and cross-KCP accounting are approved. Do not reuse savings-interest rates. Record the accepted product/accounting model in a new ADR before implementation.
+Extend approved applications through verified disbursement and basic in-system repayment at every KCP, retaining the responsible KCP. The owner accepted fixed annuity pricing, amount-based policies with a minimum 3% p.a., payout controls, repayment allocation and accounting in [ADR-0013](adr/0013-local-annuity-loan-servicing.md).
 
-See [Phase 2 acceptance and Phase 3 tech plan](tech-plan-phase-2-and-3.md). The plan is proposed; it does not authorize loan disbursement.
+Backend implementation and local Docker migration are complete. Race tests, lint, populated restore, data preservation and ledger reconciliation passed. No policy or financial authority is silently configured. The three-view frontend Loans workspace remains pending; this phase is not fully delivered.
+
+See the [tech plan](tech-plan-phase-2-and-3.md), [backend evidence](testing/phase-3-backend.tdd.md) and [deployment runbook](deployment/phase-3-loans.md).
 
 ## Progress
 

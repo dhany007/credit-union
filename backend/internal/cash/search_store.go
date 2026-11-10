@@ -20,7 +20,7 @@ func (s *PostgresStore) Search(ctx context.Context, f searchFilter) ([]ListedTra
  JOIN members m ON m.id=t.member_id
  JOIN branches b ON b.id=t.branch_id
  LEFT JOIN users u ON u.id=t.actor_id
- WHERE t.created_at >= $1 AND t.created_at < $2
+ WHERE t.kind IN ('deposit','withdrawal','interest_credit') AND t.created_at >= $1 AND t.created_at < $2
  AND ($3::text='' OR m.account_number=$3)
  AND ($4::timestamptz IS NULL OR (t.created_at,t.id)<($4,$5::text))
  ORDER BY t.created_at DESC,t.id DESC LIMIT $6`,

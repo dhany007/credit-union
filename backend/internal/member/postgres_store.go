@@ -50,9 +50,9 @@ func scanMember(row pgx.Row) (Member, error) {
 // List returns the bounded projection, also matching full account numbers.
 func (s *PostgresStore) List(ctx context.Context, search string) ([]Member, error) {
 	rows, err := s.pool.Query(ctx, memberProjection+`
-        WHERE $1='' OR m.name ILIKE '%'||$1||'%' OR m.nik=$1
+        WHERE m.is_active AND m.deleted_at IS NULL AND ($1='' OR m.name ILIKE '%'||$1||'%' OR m.nik=$1
             OR ('CU-'||lpad(m.id::text,6,'0')) ILIKE '%'||$1||'%'
-            OR m.account_number=$1
+            OR m.account_number=$1)
         ORDER BY m.id DESC LIMIT 100
     `, search)
 	if err != nil {
@@ -72,5 +72,11 @@ func (s *PostgresStore) List(ctx context.Context, search string) ([]Member, erro
 
 // FindByAccountNumber uses the unique index for cooperative-wide exact lookup.
 func (s *PostgresStore) FindByAccountNumber(ctx context.Context, accountNumber string) (Member, error) {
-	return scanMember(s.pool.QueryRow(ctx, memberProjection+` WHERE m.account_number=$1`, accountNumber))
+	return scanMember(
+		s.pool.QueryRow(
+			ctx,
+			memberProjection+` WHERE m.account_number=$1 AND m.is_active AND m.deleted_at IS NULL`,
+			accountNumber,
+		),
+	)
 }

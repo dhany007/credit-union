@@ -17,6 +17,12 @@ var balanceSnapshotMigration string
 //go:embed migrations/0004_savings_interest.sql
 var savingsInterestMigration string
 
+//go:embed migrations/0005_audit.sql
+var auditMigration string
+
+//go:embed migrations/0006_loan_servicing.sql
+var loanMigration string
+
 const (
 	initialSchemaVersion   = 1
 	accountNumberVersion   = 2
@@ -55,6 +61,8 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 		{accountNumberVersion, accountNumberMigration},
 		{balanceSnapshotVersion, balanceSnapshotMigration},
 		{4, savingsInterestMigration},
+		{5, auditMigration},
+		{6, loanMigration},
 	}
 	for _, migration := range migrations {
 		var applied bool

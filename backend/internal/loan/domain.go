@@ -14,8 +14,13 @@ type Input struct {
 
 // Decision contains a requested application outcome and verification reason.
 type Decision struct {
-	Decision string `json:"decision"`
-	Reason   string `json:"reason"`
+	Decision         string `json:"decision"`
+	Reason           string `json:"reason"`
+	ApprovedAmount   int64  `json:"approved_amount,omitempty"`
+	ApprovedTenor    int    `json:"approved_tenor_months,omitempty"`
+	ExpectedPolicyID int64  `json:"expected_policy_id,omitempty"`
+	ExpectedRate     *int   `json:"expected_rate_bps,omitempty"`
+	ExpectedRevision int64  `json:"expected_approval_revision,omitempty"`
 }
 
 // Application is the staff-facing application projection, not an active loan.
@@ -40,4 +45,14 @@ type Application struct {
 type LockedApplication struct {
 	Amount, Creator       int64
 	Product, Risk, Status string
+	MemberID              int64
+	Responsible           int
+	Tenor                 int
+	ApprovedAmount        *int64
+	ApprovedTenor         *int
+	PolicyID              *int64
+	Rate                  *int
+	Revision              int64
+	DecisionBy            *int64
+	DecidedAt             *time.Time
 }
