@@ -1,4 +1,5 @@
 "use client";
+import { DetailList } from "@/components/ui/detail-list";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 export { ErrorNotice } from "@/components/modal";
@@ -71,9 +72,17 @@ export function SchedulePreview({ preview, showSummary = true, loading = false, 
     const { t, money } = usePreferences();
     return <section className="space-y-3 rounded-lg border p-4">
     <h3 className="font-semibold">{t("Estimasi jadwal angsuran")}</h3>
-    <p className="text-sm text-muted-foreground">{t("Estimasi jadwal; tanggal aktual dan pembulatan final ditentukan saat pencairan.")}</p>{showSummary && <>{preview.base_rate_fallback !== undefined && <p className="text-sm">{t(preview.base_rate_fallback ? "Menggunakan tarif global" : "Menggunakan tarif rentang nominal")}</p>}
-    <p>{money(preview.amount)} · {preview.tenor_months} {t("bulan")} · {preview.annual_rate_bps / 100}% p.a. · {t("Versi tarif")} #{preview.policy_id}</p>
-    <p className="text-sm">{t("Angsuran reguler")}: {money(preview.regular_installment_amount)} · {t("Total bunga")}: {money(preview.total_interest)} · {t("Total pembayaran")}: {money(preview.total_payable)}</p></>}
+    <p className="text-sm text-muted-foreground">{t("Estimasi jadwal; tanggal aktual dan pembulatan final ditentukan saat pencairan.")}</p>
+    {showSummary && <DetailList className="max-w-lg" rows={[
+      [t("Nominal pengajuan"), money(preview.amount)],
+      [t("Tenor pinjaman"), preview.tenor_months + " " + t("bulan")],
+      [t("Bunga pinjaman"), preview.annual_rate_bps / 100 + "% p.a."],
+      [t("Versi tarif"), "#" + preview.policy_id],
+      [t("Sumber tarif"), t(preview.base_rate_fallback === undefined ? "Tarif persetujuan" : preview.base_rate_fallback ? "Tarif global" : "Rentang nominal")],
+      [t("Angsuran reguler"), money(preview.regular_installment_amount)],
+      [t("Total bunga"), money(preview.total_interest)],
+      [t("Total pembayaran"), money(preview.total_payable)],
+    ]}/>}
     <LocalRows resetKey={preview.amount+":"+preview.tenor_months+":"+preview.annual_rate_bps+":"+preview.policy_id} rows={preview.installments} label={t("Jadwal angsuran")} loading={loading} stale={stale} statusText={statusText}>
       {rows=><ScheduleTable rows={rows}/>}
     </LocalRows>

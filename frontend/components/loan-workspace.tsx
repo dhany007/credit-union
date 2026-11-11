@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { loanRoutes, newApplicationRoute } from "@/lib/workspace-routes";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { submitLoanCommand } from "@/lib/loan-command";
@@ -18,17 +20,19 @@ import { AccountDetail } from "./loans/account";
 import { LoanPolicies } from "./loans/policies";
 import { ErrorNotice, Field, Paged, selectClass, useRead } from "./loans/shared";
 type View = "applications" | "accounts";
-export function LoanWorkspace({ user, branches, refresh, section }: {
+export function LoanWorkspace({ user, branches, refresh, section, selected, intake }: {
     section: View | "policies";
+    selected: number | null;
+    intake: boolean;
     user: Staff;
     branches: Branch[];
     refresh: () => Promise<void>;
 }) {
     const { t, money, locale } = usePreferences();
-    const [view, setView] = useState<View>(section === "accounts" ? "accounts" : "applications");
+    const router = useRouter();
+    const view = section === "accounts" ? "accounts" : "applications";
+    const listHref = loanRoutes[view];
     const [filters, setFilters] = useState("");
-    const [selected, setSelected] = useState<number | null>(null);
-    const [intake, setIntake] = useState(false);
     const policies = section === "policies" && user.role === "supervisor";
     const [epoch, setEpoch] = useState(0);
     const [busy, setBusy] = useState(false);
@@ -38,7 +42,6 @@ export function LoanWorkspace({ user, branches, refresh, section }: {
     const [error, setError] = useState("");
     const [receipt, setReceipt] = useState<Receipt | null>(null);
     const lock = useRef(false);
-    const detailTrigger = useRef<HTMLButtonElement | null>(null);
     const storageKey = "credit-union.loan-command." + user.id;
     // Hydrate the saved cash command before enabling any new writes after SSR.
     useEffect(() => {
@@ -77,7 +80,7 @@ export function LoanWorkspace({ user, branches, refresh, section }: {
                     description: command.path === "/loan-interest/policies" ? t("Versi tarif") + " #" + result.id : result.id ? "PJ-" + result.id : undefined,
                 });
             }
-            setIntake(false);
+            if (command.path === "/loans" && window.location.pathname === newApplicationRoute) router.replace(listHref);
             setEpoch(v => v + 1);
             await refresh();
         }
@@ -101,8 +104,10 @@ export function LoanWorkspace({ user, branches, refresh, section }: {
             return;
         await submit({ path, payload: JSON.stringify(input), key: crypto.randomUUID() });
     }
-    function navigate(v: View) { setView(v); setSelected(null); setFilters(""); setIntake(false); }
     const listPath = (view === "accounts" ? "/loan-accounts" : "/loan-applications") + "?" + filters;
+    if ((intake && user.role !== "teller") || (section === "policies" && !policies)) {
+        return <p role="status">{t("Anda tidak memiliki akses ke halaman ini.")}</p>;
+    }
     return <div className="space-y-5">
     {!pending && <ErrorNotice error={error} onClose={()=>setError("")}/>}
     {pending && pendingHidden && <Button variant="outline" onClick={()=>setPendingHidden(false)}>{t("Pulihkan permintaan")}</Button>}
@@ -115,16 +120,16 @@ export function LoanWorkspace({ user, branches, refresh, section }: {
     </Modal>
     <Modal open={!!receipt} onClose={()=>setReceipt(null)} title={t("Permintaan berhasil dicatat")} wide={!!receipt?.loan_id}>
       {receipt && <LoanReceipt key={receipt.reference ?? receipt.label} receipt={receipt} user={user}
-        open={id=>{setReceipt(null);navigate("accounts");setSelected(id);}}/>}
+        open={id=>{setReceipt(null);router.push(loanRoutes.accounts + "/" + id);}}/>}
     </Modal>
     {intake && <section className="space-y-4">
-      <Button variant="ghost" disabled={busy} onClick={() => setIntake(false)}><ArrowLeft aria-hidden="true" size={18}/>{t("Kembali ke daftar pengajuan")}</Button>
+      <Button variant="ghost" disabled={busy} onClick={() => router.replace(listHref)}><ArrowLeft aria-hidden="true" size={18}/>{t("Kembali ke daftar pengajuan")}</Button>
       <h2 className="text-xl font-semibold">{t("Pengajuan pinjaman reguler")}</h2>
-      <ApplicationForm user={user} branches={branches} execute={execute} onCancel={()=>setIntake(false)} blocked={!ready || busy || !!pending}/>
+      <ApplicationForm user={user} branches={branches} execute={execute} onCancel={()=>router.replace(listHref)} blocked={!ready || busy || !!pending}/>
     </section>}
     {selected !== null && <section aria-label={t("Rincian pinjaman")} className="space-y-5">
       <header className="space-y-3">
-        <Button variant="ghost" disabled={busy} onClick={() => { setSelected(null); requestAnimationFrame(() => detailTrigger.current?.focus()); }}>
+        <Button variant="ghost" disabled={busy} onClick={() => { router.replace(listHref); }}>
           <ArrowLeft aria-hidden="true" size={18}/>{t(view === "accounts" ? "Kembali ke daftar pinjaman" : "Kembali ke daftar pengajuan")}
         </Button>
         <h2 tabIndex={-1} ref={node => node?.focus()} className="text-xl font-semibold">{t("Rincian pinjaman")}</h2>
@@ -138,7 +143,7 @@ export function LoanWorkspace({ user, branches, refresh, section }: {
  <fieldset disabled={!ready || busy || !!pending} className="no-print space-y-5 min-w-0">
     <legend className="sr-only">{t("Pinjaman")}</legend>
 
- {policies ? <LoanPolicies key={epoch} execute={execute}/> : <>{user.role === "teller" && view === "applications" && <Button variant="outline" onClick={() => setIntake(!intake)}>{t("Ajukan pinjaman")}</Button>}
+ {policies ? <LoanPolicies key={epoch} execute={execute}/> : <>{user.role === "teller" && view === "applications" && <Button variant="outline" onClick={() => router.push(newApplicationRoute)}>{t("Ajukan pinjaman")}</Button>}
  <form key={view} className="flex flex-wrap items-end gap-3" onSubmit={e => {
                 e.preventDefault();
                 const d = Object.fromEntries(new FormData(e.currentTarget));
@@ -150,7 +155,6 @@ export function LoanWorkspace({ user, branches, refresh, section }: {
                 q.set("status", String(d.status));
                 if (view === "applications" && d.status === "approved") q.set("payout_pending", "true");
                 setFilters(q.toString());
-                setSelected(null);
             }}>
         <Field label={t("Nomor rekening")}>
         <Input name="account" pattern="[0-9]{10}" maxLength={10}/>
@@ -160,7 +164,7 @@ export function LoanWorkspace({ user, branches, refresh, section }: {
         </Field>{<Field label={t("Status")}>
             <select name="status" className={selectClass} defaultValue={view === "accounts" ? "active" : "all"}>{(view === "accounts" ? ["active", "paid_off", "all"] : ["all", "submitted", "approved", "rejected"]).map(s => <option key={s} value={s}>{statusLabel(s, t)}</option>)}</select>
             </Field>}<Button>{t("Terapkan filter")}</Button>
-        <Button type="button" variant="outline" onClick={() => { setEpoch(v => v + 1); setSelected(null); }}>{t("Muat ulang")}</Button>
+        <Button type="button" variant="outline" onClick={() => { setEpoch(v => v + 1); }}>{t("Muat ulang")}</Button>
         </form>
  <Paged<Application | Account> key={listPath + epoch} path={listPath} caption={t("Daftar pinjaman")}>{rows => <div className="overflow-x-auto">
             <table className="w-full whitespace-nowrap text-left text-sm">
@@ -177,7 +181,7 @@ export function LoanWorkspace({ user, branches, refresh, section }: {
                 <td className="border-b p-3">{"linked_loan_id" in r ? t(applicationStage(r)) : statusLabel(r.status, t)}</td>
                 {"decided_at" in r && <td className="border-b p-3">{formatLoanTimestamp(r.decided_at, locale)}</td>}
                 <td className="border-b p-3">
-                <Button variant="outline" onClick={event => { detailTrigger.current = event.currentTarget; setSelected(r.id); }}>{t("Lihat rincian")}</Button>
+                <Button variant="outline" onClick={() => router.push(listHref + "/" + r.id)}>{t("Lihat rincian")}</Button>
                 </td>
                 </tr>)}</tbody>
             </table>

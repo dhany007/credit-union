@@ -1,5 +1,6 @@
 "use client";
-import { Fragment, useState, type ReactNode } from "react";
+import { DetailList } from "@/components/ui/detail-list";
+import { useState, type ReactNode } from "react";
 import { Modal } from "../modal";
 import { useLoanPreview } from "./use-loan-preview";
 import { formatLoanTimestamp, jakartaToday, payoutBody, type Application, type Installment, type Staff } from "@/lib/loans";
@@ -74,14 +75,7 @@ export function ApplicationDetail({ application: a, user, limit, payout, execute
         {[{title:t("Data pengajuan"), rows:information},{title:t("Perhitungan angsuran"), rows:calculation}].map(column=>
           <section key={column.title} className="min-w-0 space-y-3" aria-label={column.title}>
             <h4 className="border-b pb-2 text-sm font-semibold">{column.title}</h4>
-            <dl className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-2 gap-y-3 text-sm">
-              {column.rows.map(([label,value])=><Fragment key={label}>
-                <dt className="self-center break-words text-muted-foreground">{label}</dt>
-                <dd className="grid min-w-0 grid-cols-[0.5rem_minmax(0,1fr)] items-center gap-x-2">
-                  <span aria-hidden="true">:</span><span className="min-w-0 break-words font-medium">{value}</span>
-                </dd>
-              </Fragment>)}
-            </dl>
+            <DetailList rows={column.rows}/>
           </section>)}
       </div>
     </section>
@@ -104,7 +98,7 @@ export function ApplicationDetail({ application: a, user, limit, payout, execute
         <Button disabled={loading || !preview || limit <= 0 || Number(amount) > limit || Number(amount) > a.amount || Number(tenor) > a.tenor_months || !validTerms}>{t("Setujui")}</Button>{a.status === "submitted" && <Button type="button" variant="outline" disabled={reason.trim().length < 5} onClick={() => setConfirm("rejected")}>{t("Tolak")}</Button>}</div>
         </form>}
  {payout && preview && user.role === "supervisor" && <form className="space-y-3" onSubmit={e => { e.preventDefault(); setConfirm("payout"); }}>
-        <p>{t("Kas tersedia")}: {money(preview.available_cash ?? 0)} · {t(preview.payout_eligible ? "Layak dicairkan" : "Tidak layak dicairkan")}</p>{(["Penerima sudah diverifikasi", "Perjanjian sudah ditandatangani", "Persyaratan sudah dipenuhi"] as const).map(label => <label key={label} className="flex gap-2 items-center">
+        <DetailList className="max-w-lg" rows={[[t("Kas tersedia"), money(preview.available_cash ?? 0)], [t("Status"), t(preview.payout_eligible ? "Layak dicairkan" : "Tidak layak dicairkan")]]}/>{(["Penerima sudah diverifikasi", "Perjanjian sudah ditandatangani", "Persyaratan sudah dipenuhi"] as const).map(label => <label key={label} className="flex gap-2 items-center">
             <input type="checkbox" required onChange={() => setConfirm(null)}/>{t(label)}</label>)}<Field label={t("Catatan verifikasi")}>
         <Textarea required minLength={5} maxLength={500} value={reason} onChange={e => { setReason(e.target.value); setConfirm(null); }}/>
         </Field>
@@ -123,22 +117,15 @@ export function ApplicationDetail({ application: a, user, limit, payout, execute
                     void execute("/loans/" + a.id + "/decision", { decision: confirm, reason, ...(confirm === "approved" && preview ? { approved_amount: preview.amount, approved_tenor_months: preview.tenor_months, expected_policy_id: preview.policy_id, expected_rate_bps: preview.annual_rate_bps, expected_approval_revision: a.approval_revision } : {}) });
             }}>{t(confirm === "approved" ? "Konfirmasi persetujuan" : confirm === "rejected" ? "Konfirmasi penolakan" : "Konfirmasi pencairan")}</Button>
 </>}>
-   <dl className="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] gap-x-3 gap-y-4 text-sm">
-     {([
+   <DetailList rows={[
        [t("Anggota"), a.member_name],
        [t("Nomor rekening"), a.account_number],
        [t(confirm === "rejected" ? "Nominal pengajuan" : "Pokok disetujui"), money(confirm === "rejected" ? a.amount : preview?.amount ?? Number(amount))],
        [t("Tenor pinjaman"), (confirm === "rejected" ? a.tenor_months : preview?.tenor_months ?? Number(tenor)) + " " + t("bulan")],
-       ...(confirm !== "rejected" && preview ? [[t("Bunga pinjaman"), preview.annual_rate_bps / 100 + "% p.a."]] : []),
+       ...(confirm !== "rejected" && preview ? [[t("Bunga pinjaman"), preview.annual_rate_bps / 100 + "% p.a."] as const] : []),
        [t("KCP pemroses"), user.branch_name],
        [t(confirm === "payout" ? "Catatan verifikasi" : "Alasan keputusan"), reason],
-     ] as [string, string][]).map(([label, value]) => <Fragment key={label}>
-       <dt className="text-muted-foreground">{label}</dt>
-       <dd className="grid min-w-0 grid-cols-[0.5rem_minmax(0,1fr)] gap-x-2">
-         <span aria-hidden="true">:</span><span className="whitespace-pre-wrap break-words font-medium">{value}</span>
-       </dd>
-     </Fragment>)}
-   </dl>
+   ]}/>
    <p className="mt-6 border-t pt-4 text-sm text-muted-foreground">{t(confirm === "payout" ? "Konfirmasi setelah uang tunai siap diserahkan. Jangan ulang dengan referensi baru jika respons terputus." : confirm === "approved" ? "Pastikan rincian persetujuan sudah benar." : "Pastikan rincian penolakan sudah benar.")}</p>
  </Modal>
     </article>;

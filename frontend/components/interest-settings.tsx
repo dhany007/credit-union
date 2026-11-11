@@ -1,5 +1,6 @@
 "use client";
 
+import { DetailList } from "@/components/ui/detail-list";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { ErrorNotice, Notification } from "@/components/modal";
@@ -105,11 +106,11 @@ export function InterestSettings() {
       </div>
       {loading ? <p role="status">{t("Memuat...")}</p> : status && <>
         <p>{t(status.enabled ? "Perhitungan otomatis aktif" : "Perhitungan otomatis nonaktif")}</p>
-        <dl className="grid gap-2 sm:grid-cols-3">
-          <div><dt className="text-muted-foreground">{t("Tanggal aktivasi")}</dt><dd>{status.start_date ?? "—"}</dd></div>
-          <div><dt className="text-muted-foreground">{t("Perhitungan terakhir")}</dt><dd>{status.last_completed_date ?? "—"}</dd></div>
-          <div><dt className="text-muted-foreground">{t("Bulan belum dikreditkan")}</dt><dd>{status.outstanding_months.join(", ") || "—"}</dd></div>
-        </dl>
+        <DetailList className="max-w-lg" rows={[
+          [t("Tanggal aktivasi"), status.start_date ?? "—"],
+          [t("Perhitungan terakhir"), status.last_completed_date ?? "—"],
+          [t("Bulan belum dikreditkan"), status.outstanding_months.join(", ") || "—"],
+        ]}/>
         {status.failure_class && <Notification key={status.failure_class} title={t("Tidak dapat melanjutkan")}><p>{t("Perhitungan bunga gagal. Periksa log operasional.")}</p></Notification>}
       </>}
       <p className="text-muted-foreground">{t("Bunga dihitung dari saldo penutupan harian, dibagi 365, dan dibulatkan sekali saat kredit bulanan. Bunga tidak menambah kas KCP.")}</p>
@@ -146,7 +147,8 @@ export function InterestSettings() {
       <h2 className="font-semibold">{t("Riwayat tarif")}</h2>
       {!loading && policies.length === 0 && <p className="text-sm text-muted-foreground">{t("Belum ada tarif. Simpan versi pertama untuk menetapkan tanggal aktivasi.")}</p>}
       {policies.map((policy) => <article key={policy.id} className="grid gap-2 border-t pt-4 text-sm">
-        <h3 className="font-medium">#{policy.id} · {policy.effective_date} · {t("Tarif global (% p.a.)")}: {(policy.base_rate_bps / 100).toFixed(2)}%</h3>
+        <h3 className="font-medium">{t("Versi tarif")} #{policy.id} · {policy.effective_date}</h3>
+        <DetailList className="max-w-lg" rows={[[t("Tarif global (% p.a.)"), (policy.base_rate_bps / 100).toFixed(2) + "%"]]}/>
         <p className="text-muted-foreground">{policy.reason}</p>
         <ul className="grid gap-1">{policy.bands.map((band, i) => <li key={i}>{money(band.min_balance)} ≤ B {band.max_balance === null ? "" : `< ${money(band.max_balance)}`} · {(band.rate_bps / 100).toFixed(2)}% p.a.</li>)}</ul>
       </article>)}

@@ -1,4 +1,5 @@
 export const messages = {
+ "Anda tidak memiliki akses ke halaman ini.": "You do not have access to this page.",
  "Menunggu persetujuan": "Awaiting approval",
  "Menunggu pencairan": "Awaiting disbursement",
  "Sudah dicairkan": "Disbursed",
