@@ -155,8 +155,8 @@ func (s *Service) Repay(
 	id int64,
 	in RepaymentInput,
 ) (json.RawMessage, error) {
-	if actor.Role != "supervisor" {
-		return nil, fault.New(fault.Forbidden, "Supervisor access required")
+	if actor.Role != "teller" {
+		return nil, fault.New(fault.Forbidden, "Teller access required")
 	}
 	if len(in.Note) > policyReasonMax {
 		return nil, fault.New(fault.Invalid, "Repayment note is too long")
