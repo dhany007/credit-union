@@ -134,7 +134,8 @@ func TestLoanPayoutAndRepayment(t *testing.T) {
 	requireStatus(t, f.call("teller.b", "POST", loanPath+"/repayments", "phase3-payment-key02", payment), 409)
 	requireStatus(t, f.call("teller.a", "POST", loanPath+"/repayment-preview", "", `{"amount":999999999}`), 422)
 	remaining := checkInstallment()
-	if remaining.Amount != first.Amount-50000 || remaining.Allocations[0].Number != 1 || remaining.Allocations[0].Interest != 0 {
+	if remaining.Amount != first.Amount-50000 || remaining.Allocations[0].Number != 1 ||
+		remaining.Allocations[0].Interest != 0 {
 		t.Fatalf("unexpected partially paid installment: %+v", remaining)
 	}
 	requireStatus(t, f.call("teller.a", "GET", loanPath+"/repayments", "", ""), 200)
