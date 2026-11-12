@@ -72,6 +72,7 @@ func repaymentPlan(
 	id int64,
 	item accountState,
 	amount int64,
+	nextInstallment bool,
 ) (RepaymentPreview, error) {
 	out := RepaymentPreview{
 		Amount:      amount,
@@ -79,7 +80,7 @@ func repaymentPlan(
 		VersionID:   item.VersionID,
 		Allocations: []Allocation{},
 	}
-	if amount < 1 || amount > config.MaxAmount {
+	if (nextInstallment && amount != 0) || (!nextInstallment && (amount < 1 || amount > config.MaxAmount)) {
 		return out, fault.New(fault.Invalid, "Invalid repayment amount")
 	}
 	if item.Status != "active" {
@@ -112,7 +113,12 @@ func repaymentPlan(
 		if principal < 0 || interest < 0 {
 			return out, fmt.Errorf("negative scheduled loan component")
 		}
-		out.OutstandingPayable += principal + interest
+		due := principal + interest
+		out.OutstandingPayable += due
+		if nextInstallment && out.Amount == 0 && due > 0 {
+			out.Amount = due
+			remaining = due
+		}
 		row.Interest = min(remaining, interest)
 		remaining -= row.Interest
 		row.Principal = min(remaining, principal)
@@ -125,6 +131,9 @@ func repaymentPlan(
 	if err = rows.Err(); err != nil {
 		return out, err
 	}
+	if nextInstallment && out.Amount == 0 {
+		return out, fault.New(fault.Rejected, "No unpaid installments")
+	}
 	if remaining != 0 {
 		return out, fault.New(fault.Rejected, "Repayment exceeds remaining scheduled payable")
 	}
@@ -133,7 +142,9 @@ func repaymentPlan(
 }
 
 // RepaymentPreview calculates oldest-first allocations without persisting a receipt.
-func (s *Service) RepaymentPreview(ctx context.Context, id, amount int64) (RepaymentPreview, error) {
+func (s *Service) RepaymentPreview(
+	ctx context.Context, id, amount int64, nextInstallment bool,
+) (RepaymentPreview, error) {
 	var out RepaymentPreview
 	tx, err := s.store.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
@@ -144,7 +155,7 @@ func (s *Service) RepaymentPreview(ctx context.Context, id, amount int64) (Repay
 	if err != nil {
 		return out, err
 	}
-	return repaymentPlan(ctx, tx, id, item, amount)
+	return repaymentPlan(ctx, tx, id, item, amount, nextInstallment)
 }
 
 // Repay posts the receipt, allocation, cash/receivable/income journal and loan revision atomically.
@@ -172,7 +183,7 @@ func (s *Service) Repay(
 		if err = lockEligible(ctx, tx, item.MemberID, item.Responsible); err != nil {
 			return nil, err
 		}
-		plan, err := repaymentPlan(ctx, tx, id, item, in.Amount)
+		plan, err := repaymentPlan(ctx, tx, id, item, in.Amount, false)
 		if err != nil {
 			return nil, err
 		}

@@ -82,6 +82,21 @@ export type Preview = {
     available_cash?: number;
     payout_eligible?: boolean;
 };
+export type Allocation = {
+    installment_number?: number;
+    schedule_id: number;
+    principal_amount: number;
+    interest_amount: number;
+};
+export type PaymentPreview = {
+    amount: number;
+    expected_payment_revision: number;
+    current_schedule_version_id: number;
+    outstanding_payable: number;
+    principal_before: number;
+    principal_after: number;
+    allocations: Allocation[];
+};
 export type Version = {
     id: number;
     version_number: number;
@@ -93,6 +108,17 @@ export type Version = {
     approved_at: string;
     interest_rate_bps: number;
     tenor_months: number;
+};
+export type Payment = {
+    id: number;
+    repayment_number: string;
+    amount: number;
+    paid_at: string;
+    transaction_id: string;
+    branch: string;
+    actor: string;
+    note: string;
+    allocations: Allocation[];
 };
 export type Command = {
     path: string;
@@ -109,10 +135,15 @@ export type Receipt = {
     loan_number?: string;
     application_id?: number;
     disbursed_at?: string;
+    paid_at?: string;
+    repayment_number?: string;
+    principal_after?: number;
+    allocations?: Allocation[];
     id?: number;
 };
 export function jakartaToday(now = new Date()) { return new Date(now.getTime() + 7 * 3600000).toISOString().slice(0, 10); }
 export function payoutBody(p: Preview, verification: string) { return { expected_approval_revision: p.approval_revision, expected_policy_id: p.policy_id, expected_rate_bps: p.annual_rate_bps, expected_principal: p.amount, expected_tenor_months: p.tenor_months, expected_payout_date: p.payout_date, recipient_verified: true, agreement_signed: true, conditions_verified: true, verification_note: verification, note: "" }; }
+export function repaymentBody(p: PaymentPreview, note: string) { return { amount: p.amount, expected_payment_revision: p.expected_payment_revision, expected_schedule_version_id: p.current_schedule_version_id, note }; }
 export function loanListReference(item: Application | Account): string { return "application_number" in item ? item.application_number : item.loan_number; }
 
 

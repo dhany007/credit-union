@@ -128,7 +128,7 @@ export function TransactionList() {
       <ServerRows<TransactionRow> path={path} label={t("Riwayat transaksi simpanan")}>{(rows,dates)=>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1080px] text-left text-sm">
-              <caption className="py-2 text-left text-xs text-muted-foreground">{t("Riwayat transaksi simpanan")}{dates ? " · "+dates.start+" — "+dates.end+" · Asia/Jakarta (WIB)" : ""}</caption>
+              <caption className="px-5 py-2 text-left text-xs text-muted-foreground">{t("Riwayat transaksi simpanan")}{dates ? " · "+dates.start+" — "+dates.end+" · Asia/Jakarta (WIB)" : ""}</caption>
               <thead className="bg-secondary/40 text-[11px] uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th scope="col" className="p-4 pl-5 font-medium">

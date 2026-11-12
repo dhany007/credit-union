@@ -97,7 +97,7 @@ export function LoanWorkspace({ user, branches, refresh, section, selected, inta
             setError(e instanceof Error ? e.message : "Failed to fetch");
             if (e instanceof ApiError && e.status >= 400 && e.status < 500 && e.status !== 401 && e.status !== 403 && e.status !== 408 && e.status !== 429) {
                 setPending(null);
-                if (e.status === 409 || (e.status === 422 && command.path.endsWith("/disburse"))) {
+                if (e.status === 409 || (e.status === 422 && (command.path.endsWith("/disburse") || command.path.endsWith("/repayments")))) {
                     setEpoch(v => v + 1);
                 }
             }
@@ -154,7 +154,7 @@ export function LoanWorkspace({ user, branches, refresh, section, selected, inta
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{localizedError(locale,error)}</p>}
       <p className="mt-3 break-all font-mono text-xs text-muted-foreground">{pending?.key}</p>
     </Modal>
-    <Modal open={!!receipt} onClose={()=>setReceipt(null)} title={t(receipt?.disbursed_at ? "Bukti pencairan" : "Permintaan berhasil dicatat")} wide={!!receipt?.loan_id}>
+    <Modal open={!!receipt} onClose={()=>setReceipt(null)} title={t(receipt?.repayment_number ? "Bukti pembayaran" : receipt?.disbursed_at ? "Bukti pencairan" : "Permintaan berhasil dicatat")} wide={!!receipt?.loan_id}>
       {receipt && <LoanReceipt key={receipt.reference ?? receipt.label} receipt={receipt} user={user}
         open={id=>{setReceipt(null);router.push(loanRoutes.accounts + "/" + id);}}/>}
     </Modal>
@@ -232,5 +232,5 @@ function Detail({ id, view, user, execute, onReceipt }: {
     const { data, error } = useRead<Application | Account>((view === "accounts" ? "/loan-accounts/" : "/loan-applications/") + id);
     const authority = useRead<{ approval_limit: number }>(view === "accounts" ? "" : "/meta");
     return <>
-    <ErrorNotice error={error ?? authority.error ?? ""}/>{data ? view === "accounts" ? <AccountDetail account={data as Account} onReceipt={onReceipt}/> : authority.data ? <ApplicationDetail application={data as Application} user={user} limit={authority.data.approval_limit} payout={user.role === "supervisor" && (data as Application).status === "approved" && !(data as Application).linked_loan_id && (data as Application).pricing_complete} execute={execute}/> : !authority.error && <p role="status">{t("Memuat...")}</p> : !error && <p role="status">{t("Memuat...")}</p>}</>;
+    <ErrorNotice error={error ?? authority.error ?? ""}/>{data ? view === "accounts" ? <AccountDetail account={data as Account} user={user} execute={execute} onReceipt={onReceipt}/> : authority.data ? <ApplicationDetail application={data as Application} user={user} limit={authority.data.approval_limit} payout={user.role === "supervisor" && (data as Application).status === "approved" && !(data as Application).linked_loan_id && (data as Application).pricing_complete} execute={execute}/> : !authority.error && <p role="status">{t("Memuat...")}</p> : !error && <p role="status">{t("Memuat...")}</p>}</>;
 }

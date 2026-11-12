@@ -35,7 +35,7 @@ export function TableViewport({children,label,loading=false,stale=false,statusTe
 }
 export function PageControls({size,onSize,page,onPage,hasNext,count,disabled=false}:{size:PageSize;onSize:(size:PageSize)=>void;page:number;onPage:(page:number)=>void;hasNext:boolean;count:number;disabled?:boolean}) {
   const {t}=usePreferences();
-  return <div className="no-print flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+  return <div className="no-print flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
     <label className="flex items-center gap-2"><span>{t("Baris per halaman")}</span><select className="h-9 rounded-md border bg-card px-2" value={size} disabled={disabled} onChange={e=>onSize(e.target.value==="all"?"all":Number(e.target.value) as PageSize)}>
       {pageSizes.map(value=><option key={value} value={value}>{value==="all"?t("Semua"):value}</option>)}
     </select></label>

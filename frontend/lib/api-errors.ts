@@ -32,6 +32,7 @@ const errors: Record<string, string> = {
   "Loan account not found": "Rekening pinjaman tidak ditemukan.",
   "Loan resource not found": "Data pinjaman tidak ditemukan.",
   "Schedule version not found": "Versi jadwal tidak ditemukan.",
+  "No unpaid installments": "Tidak ada angsuran yang belum dibayar.",
   "Invalid repayment amount": "Nominal pembayaran tidak valid.",
   "Loan is not active": "Pinjaman tidak aktif.",
   "Repayment exceeds remaining scheduled payable": "Pembayaran melebihi sisa kewajiban terjadwal.",
