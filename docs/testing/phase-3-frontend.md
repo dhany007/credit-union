@@ -118,3 +118,7 @@ Non-financial loan successes (including approval/rejection) now use shadcn Sonne
 - Integration tests proved RED when Teller preview was incorrectly accepted, then GREEN after role enforcement. Tests reject payout for submitted/rejected applications and reject Teller payout/repayment; concurrency, rollback, cross-KCP attribution, journal and savings reconciliation remain covered.
 - Full Go race suite passed (integration 93.617 seconds), Go lint zero issues, frontend typecheck/ESLint and 58 tests passed. API and web images rebuilt/restarted healthy.
 - Chrome verified main Teller submenu, full-page intake/Back, Awaiting-disbursement status with no Teller payout action. On isolated port-3002 data, Teller submitted synthetic PJ-27 and returned to the refreshed list with the expected toast and no success dialog. Supervisor saw the additional tariff submenu and no payout action on submitted or already-disbursed applications. No main financial write occurred.
+
+## PR scope update
+
+PR #7 delivers application intake and disbursement, including schedules and receipts. The repayment interface and repayment authority changes are deferred. Earlier repayment checks document development validation of the backend already on main.

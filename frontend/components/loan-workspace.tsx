@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { loanRoutes, newApplicationRoute } from "@/lib/workspace-routes";
 import { toast } from "sonner";
@@ -72,8 +72,17 @@ export function LoanWorkspace({ user, branches, refresh, section, selected, inta
             setPending(command);
             const result = await submitLoanCommand(command, sessionStorage, storageKey, c => api<Receipt>(c.path, { method: "POST", headers: { "Idempotency-Key": c.key }, body: c.payload }));
             setPending(null);
-            if (result.reference || result.loan_id || command.path.includes("/repayments") || command.path.endsWith("/disburse")) {
-            setReceipt({ ...result, loan_id: result.loan_id ?? (command.path.startsWith("/loan-accounts/") ? Number(command.path.split("/")[2]) : undefined), label: command.path === "/loan-interest/policies" ? t("Versi tarif") + " #" + result.id : result.id ? "PJ-" + result.id : undefined });
+            if (command.path.endsWith("/disburse")) {
+                const loanID = result.loan_id;
+                toast.success(t("Pinjaman berhasil dicairkan."), {
+                    description: result.loan_number ?? result.reference,
+                    action: loanID ? {
+                        label: t("Lihat rincian"),
+                        onClick: () => router.push(loanRoutes.accounts + "/" + loanID),
+                    } : undefined,
+                });
+            } else if (result.reference || result.loan_id) {
+                setReceipt({ ...result, loan_id: result.loan_id ?? (command.path.startsWith("/loan-accounts/") ? Number(command.path.split("/")[2]) : undefined), label: result.id ? "PJ-" + result.id : undefined });
             } else {
                 const decision = command.path.endsWith("/decision") ? JSON.parse(command.payload).decision : null;
                 toast.success(t(command.path === "/loans" ? "Pengajuan pinjaman berhasil dikirim." : decision === "approved" ? "Pengajuan pinjaman disetujui." : decision === "rejected" ? "Pengajuan pinjaman ditolak." : "Permintaan berhasil dicatat"), {
@@ -87,9 +96,8 @@ export function LoanWorkspace({ user, branches, refresh, section, selected, inta
         catch (e) {
             setError(e instanceof Error ? e.message : "Failed to fetch");
             if (e instanceof ApiError && e.status >= 400 && e.status < 500 && e.status !== 401 && e.status !== 403 && e.status !== 408 && e.status !== 429) {
-                sessionStorage.removeItem(storageKey);
                 setPending(null);
-                if (e.status === 409) {
+                if (e.status === 409 || (e.status === 422 && command.path.endsWith("/disburse"))) {
                     setEpoch(v => v + 1);
                 }
             }
@@ -105,6 +113,34 @@ export function LoanWorkspace({ user, branches, refresh, section, selected, inta
         await submit({ path, payload: JSON.stringify(input), key: crypto.randomUUID() });
     }
     const listPath = (view === "accounts" ? "/loan-accounts" : "/loan-applications") + "?" + filters;
+    const dateColumn = {
+        label: t(view === "accounts" ? "Tanggal pencairan" : "Tanggal pengajuan"),
+        render: (row: Application | Account) => formatLoanTimestamp(
+            "application_number" in row ? row.created_at : row.disbursed_at,
+            locale,
+        ),
+    };
+    const columns: { label: string; render: (row: Application | Account) => ReactNode }[] = [
+        { label: t("Referensi"), render: loanListReference },
+        dateColumn,
+        { label: t("Anggota"), render: row => row.member_name },
+        { label: t("Nomor rekening"), render: row => row.account_number },
+        { label: t("Nominal"), render: row => money("application_number" in row ? row.amount : row.principal_amount) },
+        {
+            label: t("Status"),
+            render: row => "application_number" in row ? t(applicationStage(row)) : statusLabel(row.status, t),
+        },
+    ];
+    if (view === "applications") {
+        columns.push({
+            label: t("Tanggal keputusan"),
+            render: row => formatLoanTimestamp("application_number" in row ? row.decided_at : null, locale),
+        });
+    }
+    columns.push({
+        label: t("Tindakan"),
+        render: row => <Button variant="outline" onClick={() => router.push(listHref + "/" + row.id)}>{t("Lihat rincian")}</Button>,
+    });
     if ((intake && user.role !== "teller") || (section === "policies" && !policies)) {
         return <p role="status">{t("Anda tidak memiliki akses ke halaman ini.")}</p>;
     }
@@ -118,7 +154,7 @@ export function LoanWorkspace({ user, branches, refresh, section, selected, inta
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{localizedError(locale,error)}</p>}
       <p className="mt-3 break-all font-mono text-xs text-muted-foreground">{pending?.key}</p>
     </Modal>
-    <Modal open={!!receipt} onClose={()=>setReceipt(null)} title={t("Permintaan berhasil dicatat")} wide={!!receipt?.loan_id}>
+    <Modal open={!!receipt} onClose={()=>setReceipt(null)} title={t(receipt?.disbursed_at ? "Bukti pencairan" : "Permintaan berhasil dicatat")} wide={!!receipt?.loan_id}>
       {receipt && <LoanReceipt key={receipt.reference ?? receipt.label} receipt={receipt} user={user}
         open={id=>{setReceipt(null);router.push(loanRoutes.accounts + "/" + id);}}/>}
     </Modal>
@@ -170,20 +206,13 @@ export function LoanWorkspace({ user, branches, refresh, section, selected, inta
             <table className="w-full whitespace-nowrap text-left text-sm">
             <caption className="sr-only">{t("Daftar pinjaman")}</caption>
             <thead>
-            <tr>{[t("Referensi"), ...(view !== "accounts" ? [t("Tanggal pengajuan")] : []), t("Anggota"), t("Nomor rekening"), t("Nominal"), t("Status"), ...(view !== "accounts" ? [t("Tanggal keputusan")] : []), t("Tindakan")].map(h => <th key={h} className="border-b p-3">{h}</th>)}</tr>
+                <tr>{columns.map(column => <th key={column.label} scope="col" className="border-b p-3">{column.label}</th>)}</tr>
             </thead>
-            <tbody>{rows.map(r => <tr key={r.id}>
-                <td className="border-b p-3">{loanListReference(r)}</td>
-                {"created_at" in r && <td className="border-b p-3">{formatLoanTimestamp(r.created_at, locale)}</td>}
-                <td className="border-b p-3">{r.member_name}</td>
-                <td className="border-b p-3">{r.account_number}</td>
-                <td className="border-b p-3">{money("principal_amount" in r ? r.principal_amount : r.amount)}</td>
-                <td className="border-b p-3">{"linked_loan_id" in r ? t(applicationStage(r)) : statusLabel(r.status, t)}</td>
-                {"decided_at" in r && <td className="border-b p-3">{formatLoanTimestamp(r.decided_at, locale)}</td>}
-                <td className="border-b p-3">
-                <Button variant="outline" onClick={() => router.push(listHref + "/" + r.id)}>{t("Lihat rincian")}</Button>
-                </td>
-                </tr>)}</tbody>
+            <tbody>
+                {rows.map(row => <tr key={row.id}>
+                    {columns.map(column => <td key={column.label} className="border-b p-3">{column.render(row)}</td>)}
+                </tr>)}
+            </tbody>
             </table>
             </div>}</Paged>
  </>}
@@ -203,5 +232,5 @@ function Detail({ id, view, user, execute, onReceipt }: {
     const { data, error } = useRead<Application | Account>((view === "accounts" ? "/loan-accounts/" : "/loan-applications/") + id);
     const authority = useRead<{ approval_limit: number }>(view === "accounts" ? "" : "/meta");
     return <>
-    <ErrorNotice error={error ?? authority.error ?? ""}/>{data ? view === "accounts" ? <AccountDetail account={data as Account} user={user} execute={execute} onReceipt={onReceipt}/> : authority.data ? <ApplicationDetail application={data as Application} user={user} limit={authority.data.approval_limit} payout={user.role === "supervisor" && (data as Application).status === "approved" && !(data as Application).linked_loan_id && (data as Application).pricing_complete} execute={execute}/> : !authority.error && <p role="status">{t("Memuat...")}</p> : !error && <p role="status">{t("Memuat...")}</p>}</>;
+    <ErrorNotice error={error ?? authority.error ?? ""}/>{data ? view === "accounts" ? <AccountDetail account={data as Account} onReceipt={onReceipt}/> : authority.data ? <ApplicationDetail application={data as Application} user={user} limit={authority.data.approval_limit} payout={user.role === "supervisor" && (data as Application).status === "approved" && !(data as Application).linked_loan_id && (data as Application).pricing_complete} execute={execute}/> : !authority.error && <p role="status">{t("Memuat...")}</p> : !error && <p role="status">{t("Memuat...")}</p>}</>;
 }

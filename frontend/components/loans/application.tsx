@@ -95,10 +95,10 @@ export function ApplicationDetail({ application: a, user, limit, payout, execute
         <Textarea required minLength={5} maxLength={1000} value={reason} onChange={e => { setReason(e.target.value); setConfirm(null); }}/>
         </Field>
         <div className="flex gap-3">
-        <Button disabled={loading || !preview || limit <= 0 || Number(amount) > limit || Number(amount) > a.amount || Number(tenor) > a.tenor_months || !validTerms}>{t("Setujui")}</Button>{a.status === "submitted" && <Button type="button" variant="outline" disabled={reason.trim().length < 5} onClick={() => setConfirm("rejected")}>{t("Tolak")}</Button>}</div>
+        <Button disabled={loading || !preview || a.risk !== "low" || limit <= 0 || Number(amount) > limit || Number(amount) > a.amount || Number(tenor) > a.tenor_months || !validTerms}>{t("Setujui")}</Button>{a.status === "submitted" && <Button type="button" variant="outline" disabled={reason.trim().length < 5} onClick={() => setConfirm("rejected")}>{t("Tolak")}</Button>}</div>
         </form>}
  {payout && preview && user.role === "supervisor" && <form className="space-y-3" onSubmit={e => { e.preventDefault(); setConfirm("payout"); }}>
-        <DetailList className="max-w-lg" rows={[[t("Kas tersedia"), money(preview.available_cash ?? 0)], [t("Status"), t(preview.payout_eligible ? "Layak dicairkan" : "Tidak layak dicairkan")]]}/>{(["Penerima sudah diverifikasi", "Perjanjian sudah ditandatangani", "Persyaratan sudah dipenuhi"] as const).map(label => <label key={label} className="flex gap-2 items-center">
+        <DetailList className="max-w-lg" rows={[[t("Kas tersedia"), money(preview.available_cash ?? 0)], [t("Status"), preview.payout_eligible ? t("Layak dicairkan") : t("Kekurangan saldo kas {amount}", { amount: money(Math.max(0, preview.amount - (preview.available_cash ?? 0))) })]]}/>{(["Penerima sudah diverifikasi", "Perjanjian sudah ditandatangani", "Persyaratan sudah dipenuhi"] as const).map(label => <label key={label} className="flex gap-2 items-center">
             <input type="checkbox" required onChange={() => setConfirm(null)}/>{t(label)}</label>)}<Field label={t("Catatan verifikasi")}>
         <Textarea required minLength={5} maxLength={500} value={reason} onChange={e => { setReason(e.target.value); setConfirm(null); }}/>
         </Field>

@@ -45,8 +45,7 @@ BEGIN
 
  IF EXISTS(SELECT 1 FROM transactions t LEFT JOIN users u ON u.id=t.actor_id JOIN members m ON m.id=t.member_id
  WHERE (t.kind IN ('deposit','withdrawal','loan_disbursement','loan_repayment')
- AND (u.id IS NULL OR u.branch_id<>t.branch_id OR (t.kind IN ('deposit','withdrawal') AND u.role<>'teller')
- OR (t.kind IN ('loan_disbursement','loan_repayment') AND u.role NOT IN ('teller','supervisor'))))
+ AND (u.id IS NULL OR (t.kind IN ('deposit','withdrawal') AND (u.branch_id<>t.branch_id OR u.role<>'teller'))))
  OR (t.kind='interest_credit' AND (t.actor_id IS NOT NULL OR t.branch_id<>m.home_branch_id))
  OR (t.balance_before IS NULL)<>(t.balance_after IS NULL)
  OR (t.kind IN ('loan_disbursement','loan_repayment') AND t.balance_before IS NOT NULL)

@@ -1,4 +1,8 @@
 export const messages = {
+ "Kelola pengajuan dan pencairan pinjaman.": "Manage loan applications and disbursements.",
+ "Pinjaman berhasil dicairkan.": "Loan successfully disbursed.",
+ "Nomor pinjaman": "Loan number",
+ "Petugas": "Staff member",
  "Anda tidak memiliki akses ke halaman ini.": "You do not have access to this page.",
  "Menunggu persetujuan": "Awaiting approval",
  "Menunggu pencairan": "Awaiting disbursement",
@@ -109,7 +113,7 @@ export const messages = {
   "Preview anuitas": "Annuity preview",
   "Kas tersedia": "Available cash",
   "Layak dicairkan": "Eligible for payout",
-  "Tidak layak dicairkan": "Not eligible for payout",
+  "Kekurangan saldo kas {amount}": "Cash shortfall of {amount}",
   "Penerima sudah diverifikasi": "Recipient verified",
   "Perjanjian sudah ditandatangani": "Agreement signed",
   "Persyaratan sudah dipenuhi": "Conditions fulfilled",

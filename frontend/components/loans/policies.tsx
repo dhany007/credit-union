@@ -23,7 +23,8 @@ export function LoanPolicies({ execute }: {
     execute: Execute;
 }) {
     const { t, money } = usePreferences();
-    const { data } = useRead<Page<Policy>>("/loan-interest/policies");
+    const [attempt, setAttempt] = useState(0);
+    const { data, error } = useRead<Page<Policy>>("/loan-interest/policies", attempt);
     const [bands, setBands] = useState<{
         min: string;
         max: string;
@@ -33,6 +34,7 @@ export function LoanPolicies({ execute }: {
     return <section className="space-y-5 rounded border p-5">
     <h3 className="font-semibold">{t("Tarif bunga pinjaman")}</h3>
     <p className="text-sm text-muted-foreground">{t("Tarif minimal 3% p.a. untuk seluruh pokok sesuai rentang nominal. Berlaku paling cepat besok; pinjaman lama tidak berubah.")}</p>
+    {error && <div className="flex items-center gap-3"><p role="status">{t("Gagal memuat data. Silakan coba lagi.")}</p><Button type="button" variant="outline" onClick={() => setAttempt(value => value + 1)}>{t("Muat ulang")}</Button></div>}
     <ErrorNotice error={invalid} onClose={()=>setInvalid("")}/>
     <form className="space-y-4" onSubmit={e => {
             e.preventDefault();

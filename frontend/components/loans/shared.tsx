@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 export { ErrorNotice } from "@/components/modal";
 import { usePreferences } from "@/components/preferences";
 import { LocalRows, ServerRows } from "@/components/data-table";
-import type { Installment, Preview, Allocation } from "@/lib/loans";
+import type { Installment, Preview } from "@/lib/loans";
 export const selectClass = "h-10 rounded-md border bg-card px-3 text-sm w-full";
 export function Field({ label, children }: {
     label: string;
@@ -14,7 +14,7 @@ export function Field({ label, children }: {
     return <label className="grid gap-2 text-sm">
     <span className="font-medium">{label}</span>{children}</label>;
 }
-export function useRead<T>(path: string) {
+export function useRead<T>(path: string, attempt = 0) {
     const [state, setState] = useState<{
         path: string;
         data?: T;
@@ -32,7 +32,7 @@ export function useRead<T>(path: string) {
                 setState({ path, error: e instanceof Error ? e.message : "Failed to fetch" });
         });
         return () => c.abort();
-    }, [path]);
+    }, [path, attempt]);
     return state.path === path ? state : { path };
 }
 export function Paged<T>({ path, children, caption }: {
@@ -87,25 +87,5 @@ export function SchedulePreview({ preview, showSummary = true, loading = false, 
       {rows=><ScheduleTable rows={rows}/>}
     </LocalRows>
     </section>;
-}
-export function Allocations({ rows }: {
-    rows: Allocation[];
-}) {
-    const { t, money } = usePreferences();
-    return <LocalRows rows={rows} label={t("Alokasi pembayaran")} printAll>{visible=><table className="w-full text-left text-sm">
-    <caption className="text-left">{t("Alokasi pembayaran")}</caption>
-    <thead>
-    <tr>
-    <th className="p-2">{t("Angsuran / referensi jadwal")}</th>
-    <th className="p-2">{t("Pokok")}</th>
-    <th className="p-2">{t("Bunga")}</th>
-    </tr>
-    </thead>
-    <tbody>{visible.map(r => <tr key={r.schedule_id}>
-        <td className="p-2">{r.installment_number ?? "#" + r.schedule_id}</td>
-        <td className="p-2">{money(r.principal_amount)}</td>
-        <td className="p-2">{money(r.interest_amount)}</td>
-        </tr>)}</tbody>
-    </table>}</LocalRows>;
 }
 export type Execute = (path: string, input: unknown) => Promise<void>;

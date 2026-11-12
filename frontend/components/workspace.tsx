@@ -489,7 +489,7 @@ function WorkspaceContent({ route }: { route: NonNullable<ReturnType<typeof work
                         )
                       : tab === "interest" ? t("Kelola tarif tahunan dan pantau kredit bunga bulanan.")
  : t(
-                          "Kelola pengajuan, pencairan, dan pembayaran pinjaman.",
+                          "Kelola pengajuan dan pencairan pinjaman.",
                         )}
               </p>
             </div>
