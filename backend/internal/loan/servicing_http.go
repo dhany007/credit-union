@@ -83,7 +83,7 @@ func registerAccountRoutes(r gin.IRouter, s *Service, g *auth.Handler) {
 			send(c, out, err)
 		})
 	}
-	r.POST("/loan-accounts/:id/repayment-preview", g.Require("teller"), func(c *gin.Context) {
+	r.POST("/loan-accounts/:id/repayment-preview", g.Require("supervisor"), func(c *gin.Context) {
 		id, ok := routeID(c)
 		if !ok {
 			return
@@ -98,7 +98,7 @@ func registerAccountRoutes(r gin.IRouter, s *Service, g *auth.Handler) {
 		out, err := s.RepaymentPreview(c.Request.Context(), id, in.Amount)
 		send(c, out, err)
 	})
-	r.POST("/loan-accounts/:id/repayments", g.Require("teller"), func(c *gin.Context) {
+	r.POST("/loan-accounts/:id/repayments", g.Require("supervisor"), func(c *gin.Context) {
 		id, ok := routeID(c)
 		if !ok {
 			return

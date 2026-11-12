@@ -137,7 +137,7 @@ func TestLoanConcurrencyAndRollback(t *testing.T) {
 fail_loan_journal()`); err != nil {
 		t.Fatal(err)
 	}
-	requireLoanCode(t, postLoanJSON(t, f, "teller.b", paymentPath, "rollback-payment-key01", payment), 500)
+	requireLoanCode(t, postLoanJSON(t, f, "supervisor", paymentPath, "rollback-payment-key01", payment), 500)
 	var receipts, allocations, revision int64
 	if err := f.db.QueryRow(ctx, `SELECT (SELECT count(*) FROM loan_repayments),
  (SELECT count(*) FROM loan_repayment_allocations),payment_revision FROM loans WHERE id=$1`, loanID).
@@ -158,7 +158,7 @@ fail_loan_journal()`); err != nil {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			codes <- postLoanJSON(t, f, "teller.b", paymentPath, fmt.Sprintf("pay-race-key-%05d", i), payment).Code
+			codes <- postLoanJSON(t, f, "supervisor", paymentPath, fmt.Sprintf("pay-race-key-%05d", i), payment).Code
 		}(i)
 	}
 	wg.Wait()
@@ -183,8 +183,8 @@ fail_loan_journal()`); err != nil {
 	}
 	payment["amount"] = due
 	payment["expected_payment_revision"] = 2
-	requireLoanCode(t, postLoanJSON(t, f, "teller.a", paymentPath, "payoff-key-0000001", payment), 200)
-	requireLoanCode(t, postLoanJSON(t, f, "teller.a", paymentPath, "payoff-key-0000001", payment), 200)
+	requireLoanCode(t, postLoanJSON(t, f, "supervisor", paymentPath, "payoff-key-0000001", payment), 200)
+	requireLoanCode(t, postLoanJSON(t, f, "supervisor", paymentPath, "payoff-key-0000001", payment), 200)
 	var state string
 	if err := f.db.QueryRow(ctx, "SELECT status FROM loans WHERE id=$1", loanID).
 		Scan(&state); err != nil ||

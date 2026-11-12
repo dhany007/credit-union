@@ -1,4 +1,6 @@
 export const messages = {
+ "Bukti pembayaran": "Payment receipt",
+ "Tanggal pembayaran": "Payment date",
  "Kelola pengajuan dan pencairan pinjaman.": "Manage loan applications and disbursements.",
  "Pinjaman berhasil dicairkan.": "Loan successfully disbursed.",
  "Nomor pinjaman": "Loan number",

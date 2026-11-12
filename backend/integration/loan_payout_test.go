@@ -97,7 +97,13 @@ func TestLoanPayoutAndRepayment(t *testing.T) {
 	requireStatus(t, f.call("teller.a", "GET", loanPath, "", ""), 200)
 	requireStatus(t, f.call("teller.a", "GET", loanPath+"/installments", "", ""), 200)
 	requireStatus(t, f.call("teller.a", "GET", loanPath+"/schedule-versions", "", ""), 200)
-	w = f.call("teller.b", "POST", loanPath+"/repayment-preview", "", `{"amount":50000}`)
+	// The same Supervisor services repayment from another KCP without changing loan ownership.
+	if _, err = f.db.Exec(ctx, "UPDATE users SET branch_id=2 WHERE id=$1", f.ids["supervisor"]); err != nil {
+		t.Fatal(err)
+	}
+	requireStatus(t, f.call("teller.b", "POST", loanPath+"/repayment-preview", "", `{"amount":50000}`), 403)
+	requireStatus(t, f.call("teller.b", "POST", loanPath+"/repayments", "teller-blocked-pay01", `{}`), 403)
+	w = f.call("supervisor", "POST", loanPath+"/repayment-preview", "", `{"amount":50000}`)
 	requireStatus(t, w, 200)
 	var plan struct {
 		Version int64 `json:"current_schedule_version_id"`
@@ -110,11 +116,11 @@ func TestLoanPayoutAndRepayment(t *testing.T) {
 "note":"Partial at another KCP"}`,
 		plan.Version,
 	)
-	w = f.call("teller.b", "POST", loanPath+"/repayments", "phase3-payment-key01", payment)
+	w = f.call("supervisor", "POST", loanPath+"/repayments", "phase3-payment-key01", payment)
 	requireStatus(t, w, 200)
-	requireStatus(t, f.call("teller.b", "POST", loanPath+"/repayments", "phase3-payment-key01", payment), 200)
-	requireStatus(t, f.call("teller.b", "POST", loanPath+"/repayments", "phase3-payment-key02", payment), 409)
-	requireStatus(t, f.call("teller.a", "POST", loanPath+"/repayment-preview", "", `{"amount":999999999}`), 422)
+	requireStatus(t, f.call("supervisor", "POST", loanPath+"/repayments", "phase3-payment-key01", payment), 200)
+	requireStatus(t, f.call("supervisor", "POST", loanPath+"/repayments", "phase3-payment-key02", payment), 409)
+	requireStatus(t, f.call("supervisor", "POST", loanPath+"/repayment-preview", "", `{"amount":999999999}`), 422)
 	requireStatus(t, f.call("teller.a", "GET", loanPath+"/repayments", "", ""), 200)
 	var balance, principal, interest, unbalanced int64
 	if err = f.db.QueryRow(ctx, "SELECT balance FROM members WHERE id=$1", member).Scan(&balance); err != nil {

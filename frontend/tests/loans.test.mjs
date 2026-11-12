@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applicationStage, formatLoanTimestamp, jakartaToday, payoutBody, loanListReference } from "../lib/loans.ts";
+import { applicationStage, formatLoanTimestamp, jakartaToday, payoutBody, repaymentBody, loanListReference } from "../lib/loans.ts";
 import { submitLoanCommand } from "../lib/loan-command.ts";
 test("business date crosses midnight in Jakarta rather than the client zone", () => {
  assert.equal(jakartaToday(new Date("2026-11-10T17:01:00Z")), "2026-11-11");
@@ -55,4 +55,10 @@ test("late payout replay cannot erase a newer pending payout", async () => {
  finishReplay({ reference: "TX-original" });
  await replay;
  assert.deepEqual(JSON.parse(s.getItem("pending")), next);
+});
+
+test("payment uses the reviewed amount and revisions", () => {
+ assert.deepEqual(repaymentBody({ amount: 12345, expected_payment_revision: 4, current_schedule_version_id: 8 }, "cash"), {
+  amount: 12345, expected_payment_revision: 4, expected_schedule_version_id: 8, note: "cash",
+ });
 });

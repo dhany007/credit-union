@@ -1,4 +1,5 @@
 "use client";
+import type { Allocation } from "@/lib/loans";
 import { DetailList } from "@/components/ui/detail-list";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -87,5 +88,25 @@ export function SchedulePreview({ preview, showSummary = true, loading = false, 
       {rows=><ScheduleTable rows={rows}/>}
     </LocalRows>
     </section>;
+}
+export function Allocations({ rows }: {
+    rows: Allocation[];
+}) {
+    const { t, money } = usePreferences();
+    return <LocalRows rows={rows} label={t("Alokasi pembayaran")} printAll>{visible=><table className="w-full text-left text-sm">
+    <caption className="text-left">{t("Alokasi pembayaran")}</caption>
+    <thead>
+    <tr>
+    <th className="p-2">{t("Angsuran / referensi jadwal")}</th>
+    <th className="p-2">{t("Pokok")}</th>
+    <th className="p-2">{t("Bunga")}</th>
+    </tr>
+    </thead>
+    <tbody>{visible.map(r => <tr key={r.schedule_id}>
+        <td className="p-2">{r.installment_number ?? "#" + r.schedule_id}</td>
+        <td className="p-2">{money(r.principal_amount)}</td>
+        <td className="p-2">{money(r.interest_amount)}</td>
+        </tr>)}</tbody>
+    </table>}</LocalRows>;
 }
 export type Execute = (path: string, input: unknown) => Promise<void>;
