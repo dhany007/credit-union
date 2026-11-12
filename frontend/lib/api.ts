@@ -1,3 +1,8 @@
+export class ApiError extends Error {
+  readonly status: number;
+  constructor(message: string, status: number) { super(message); this.name = "ApiError"; this.status = status; }
+}
+
 export async function api<T>(
   path: string,
   options: RequestInit = {},
@@ -22,7 +27,7 @@ export async function api<T>(
       typeof data.error === "string" && data.error
         ? data.error
         : "Operation failed. Please retry with the same reference.";
-    throw new Error(message);
+    throw new ApiError(message, response.status);
   }
   // Callers select the response type; endpoint-specific validation stays at their boundary.
   return data as T;

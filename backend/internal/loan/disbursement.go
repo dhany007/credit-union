@@ -98,6 +98,9 @@ func (s *Service) PayoutPreview(
 	in PayoutPreviewInput,
 ) (PayoutPreview, error) {
 	var out PayoutPreview
+	if actor.Role != "supervisor" {
+		return out, fault.New(fault.Forbidden, "Supervisor access required")
+	}
 	tx, err := s.store.pool.Begin(ctx)
 	if err != nil {
 		return out, err
@@ -148,8 +151,8 @@ func (s *Service) Disburse(
 	id int64,
 	in PayoutInput,
 ) (json.RawMessage, error) {
-	if actor.Role != "teller" {
-		return nil, fault.New(fault.Forbidden, "Teller access required")
+	if actor.Role != "supervisor" {
+		return nil, fault.New(fault.Forbidden, "Supervisor access required")
 	}
 	if !in.Recipient || !in.Agreement || !in.Conditions || len(strings.TrimSpace(in.VerificationNote)) < 5 ||
 		len(in.VerificationNote) > 500 || len(in.Note) > 500 {

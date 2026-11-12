@@ -129,3 +129,29 @@
   --shadow-xs: var(--shadow-offset-x) var(--shadow-offset-y) var(--shadow-blur) var(--shadow-spread) color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
   --shadow-sm: var(--shadow-offset-x) var(--shadow-offset-y) var(--shadow-blur) var(--shadow-spread) color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
 }
+
+@media print {
+ main:has(.loan-receipt) > :not(:has(.loan-receipt)) { display: none; }
+ .loan-receipt { background: white; color: black; }
+ .loan-receipt .overflow-auto { max-height: none; overflow: visible; }
+}
+
+@media print {
+  body:has([data-modal-content]) > :not([data-modal-content]) { display: none !important; }
+  [data-modal-content] { position: static !important; transform: none !important; max-height: none !important; width: 100% !important; max-width: none !important; border: 0 !important; box-shadow: none !important; background: white !important; color: black !important; overflow: visible !important; }
+  [data-modal-content] .overflow-y-auto { max-height: none !important; overflow: visible !important; }
+  [data-modal-overlay] { display: none !important; }
+}
+
+.table-viewport { overflow: auto; position: relative; scrollbar-gutter: stable; }
+.table-viewport .overflow-x-auto { overflow: visible; }
+.table-viewport thead { position: sticky; top: var(--table-caption-height,0px); z-index: 10; background: var(--card); }
+.table-viewport:not(:has(table)) { height: auto !important; max-height: 35rem; }
+.print-only { display: none; }
+@media print {
+ .table-viewport { height: auto !important; max-height: none !important; overflow: visible !important; }
+ .table-viewport thead { position: static; }
+ .print-only { display: block; }
+}
+
+.table-viewport caption:not(.sr-only) { position: sticky; top: 0; z-index: 11; background: var(--card); }

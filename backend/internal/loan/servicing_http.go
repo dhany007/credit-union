@@ -46,7 +46,7 @@ func registerAccountRoutes(r gin.IRouter, s *Service, g *auth.Handler) {
 			send(c, out, err)
 		})
 	}
-	r.POST("/loan-applications/:id/disbursement-preview", g.Require("teller"), func(c *gin.Context) {
+	r.POST("/loan-applications/:id/disbursement-preview", g.Require("supervisor"), func(c *gin.Context) {
 		id, ok := routeID(c)
 		if !ok {
 			return
@@ -59,7 +59,7 @@ func registerAccountRoutes(r gin.IRouter, s *Service, g *auth.Handler) {
 		out, err := s.PayoutPreview(c.Request.Context(), auth.ActorFrom(c), id, in)
 		send(c, out, err)
 	})
-	r.POST("/loan-applications/:id/disburse", g.Require("teller"), func(c *gin.Context) {
+	r.POST("/loan-applications/:id/disburse", g.Require("supervisor"), func(c *gin.Context) {
 		id, ok := routeID(c)
 		if !ok {
 			return

@@ -1,11 +1,14 @@
 "use client";
 
+import { DetailList } from "@/components/ui/detail-list";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { localizedError } from "@/lib/api-errors";
+import { ErrorNotice, Notification } from "@/components/modal";
 import { nextJakartaDate, rateToBps } from "@/lib/interest";
 import { usePreferences } from "@/components/preferences";
+import { LocalRows } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
+import { AmountInput } from "@/components/amount-input";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +25,7 @@ const initialBands: DraftBand[] = [
 ];
 
 export function InterestSettings() {
-  const { t, locale, money } = usePreferences();
+  const { t, money } = usePreferences();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [status, setStatus] = useState<Status | null>(null);
   const [effective, setEffective] = useState(nextJakartaDate);
@@ -103,17 +106,17 @@ export function InterestSettings() {
       </div>
       {loading ? <p role="status">{t("Memuat...")}</p> : status && <>
         <p>{t(status.enabled ? "Perhitungan otomatis aktif" : "Perhitungan otomatis nonaktif")}</p>
-        <dl className="grid gap-2 sm:grid-cols-3">
-          <div><dt className="text-muted-foreground">{t("Tanggal aktivasi")}</dt><dd>{status.start_date ?? "—"}</dd></div>
-          <div><dt className="text-muted-foreground">{t("Perhitungan terakhir")}</dt><dd>{status.last_completed_date ?? "—"}</dd></div>
-          <div><dt className="text-muted-foreground">{t("Bulan belum dikreditkan")}</dt><dd>{status.outstanding_months.join(", ") || "—"}</dd></div>
-        </dl>
-        {status.failure_class && <p role="alert" className="text-destructive">{t("Perhitungan bunga gagal. Periksa log operasional.")}</p>}
+        <DetailList className="max-w-lg" rows={[
+          [t("Tanggal aktivasi"), status.start_date ?? "—"],
+          [t("Perhitungan terakhir"), status.last_completed_date ?? "—"],
+          [t("Bulan belum dikreditkan"), status.outstanding_months.join(", ") || "—"],
+        ]}/>
+        {status.failure_class && <Notification key={status.failure_class} title={t("Tidak dapat melanjutkan")}><p>{t("Perhitungan bunga gagal. Periksa log operasional.")}</p></Notification>}
       </>}
       <p className="text-muted-foreground">{t("Bunga dihitung dari saldo penutupan harian, dibagi 365, dan dibulatkan sekali saat kredit bulanan. Bunga tidak menambah kas KCP.")}</p>
     </CardContent></Card>
-    {error && <p role="alert" className="text-sm text-destructive">{localizedError(locale, error)}</p>}
-    {saved && <p role="status" className="text-sm">{t("Versi tarif berhasil disimpan.")}</p>}
+    <ErrorNotice error={error} onClose={()=>setError("")}/>
+    {saved && <Notification title={t("Permintaan berhasil dicatat")} onClose={()=>setSaved(false)}><p>{t("Versi tarif berhasil disimpan.")}</p></Notification>}
     <Card><CardContent className="pt-6">
       <form onSubmit={save} className="grid gap-5">
         <h2 className="font-semibold">{t("Versi tarif baru")}</h2>
@@ -124,16 +127,16 @@ export function InterestSettings() {
             <label className="grid gap-2 text-sm">{t("Tanggal berlaku")}<Input required type="date" min={nextJakartaDate()} value={effective} onChange={(e) => setEffective(e.target.value)} /></label>
             <label className="grid gap-2 text-sm">{t("Tarif global (% p.a.)")}<Input required inputMode="decimal" value={baseRate} onChange={(e) => setBaseRate(e.target.value)} /></label>
           </div>
-          <div className="overflow-x-auto"><table className="w-full min-w-[540px] text-left text-sm">
+          <LocalRows rows={bands.map((band,index)=>({band,index}))} label={t("Pengaturan tarif")}>{visible=><div className="overflow-x-auto"><table className="w-full min-w-[540px] text-left text-sm">
             <caption className="mb-3 text-left text-muted-foreground">{t("Rentang memakai batas bawah termasuk dan batas atas tidak termasuk. Di luar rentang menggunakan tarif global.")}</caption>
             <thead><tr><th scope="col" className="p-2">{t("Saldo mulai (Rp)")}</th><th scope="col" className="p-2">{t("Saldo hingga (Rp)")}</th><th scope="col" className="p-2">{t("Bunga (% p.a.)")}</th><th scope="col" className="p-2">{t("Tindakan")}</th></tr></thead>
-            <tbody>{bands.map((band, i) => <tr key={i}>
-              <td className="p-2"><Input aria-label={t("Saldo mulai baris {row}", { row: i + 1 })} required type="number" min="0" step="1" value={band.minimum} onChange={(e) => updateBand(i, "minimum", e.target.value)} /></td>
-              <td className="p-2"><Input aria-label={t("Saldo hingga baris {row}", { row: i + 1 })} type="number" min="1" step="1" placeholder={t("Tanpa batas")} value={band.maximum} onChange={(e) => updateBand(i, "maximum", e.target.value)} /></td>
+            <tbody>{visible.map(({band,index:i}) => <tr key={i}>
+              <td className="p-2"><AmountInput aria-label={t("Saldo mulai baris {row}", { row: i + 1 })} required minimum={0} value={band.minimum} onValueChange={(digits) => updateBand(i, "minimum", digits)} /></td>
+              <td className="p-2"><AmountInput aria-label={t("Saldo hingga baris {row}", { row: i + 1 })} placeholder={t("Tanpa batas")} value={band.maximum} onValueChange={(digits) => updateBand(i, "maximum", digits)} /></td>
               <td className="p-2"><Input aria-label={t("Bunga baris {row}", { row: i + 1 })} required inputMode="decimal" value={band.rate} onChange={(e) => updateBand(i, "rate", e.target.value)} /></td>
               <td className="p-2"><Button type="button" variant="ghost" aria-label={t("Hapus rentang {row}", { row: i + 1 })} onClick={() => setBands((current) => current.filter((_, index) => index !== i))}>{t("Hapus")}</Button></td>
             </tr>)}</tbody>
-          </table></div>
+          </table></div>}</LocalRows>
           <Button type="button" variant="outline" className="justify-self-start" disabled={bands.length >= 20} onClick={() => setBands((current) => [...current, { minimum: "", maximum: "", rate: "3" }])}>{t("Tambah rentang")}</Button>
           <label className="grid gap-2 text-sm">{t("Alasan perubahan")}<Textarea required maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} /></label>
           <Button type="submit" className="justify-self-start">{t(busy ? "Menyimpan..." : "Simpan versi tarif")}</Button>
@@ -144,7 +147,8 @@ export function InterestSettings() {
       <h2 className="font-semibold">{t("Riwayat tarif")}</h2>
       {!loading && policies.length === 0 && <p className="text-sm text-muted-foreground">{t("Belum ada tarif. Simpan versi pertama untuk menetapkan tanggal aktivasi.")}</p>}
       {policies.map((policy) => <article key={policy.id} className="grid gap-2 border-t pt-4 text-sm">
-        <h3 className="font-medium">#{policy.id} · {policy.effective_date} · {t("Tarif global (% p.a.)")}: {(policy.base_rate_bps / 100).toFixed(2)}%</h3>
+        <h3 className="font-medium">{t("Versi tarif")} #{policy.id} · {policy.effective_date}</h3>
+        <DetailList className="max-w-lg" rows={[[t("Tarif global (% p.a.)"), (policy.base_rate_bps / 100).toFixed(2) + "%"]]}/>
         <p className="text-muted-foreground">{policy.reason}</p>
         <ul className="grid gap-1">{policy.bands.map((band, i) => <li key={i}>{money(band.min_balance)} ≤ B {band.max_balance === null ? "" : `< ${money(band.max_balance)}`} · {(band.rate_bps / 100).toFixed(2)}% p.a.</li>)}</ul>
       </article>)}

@@ -1,6 +1,6 @@
 # Tech Plan - Phase 2 Acceptance and Phase 3 Lending Lifecycle
 
-Status: Phase 2 locally accepted; Phase 3 backend implemented and verified locally on 2026-11-10. Frontend implementation remains pending. See testing/phase-3-backend.tdd.md and deployment/phase-3-loans.md.
+Status: Phase 2 locally accepted; Phase 3 backend and frontend implemented and verified locally on 2026-11-10. See testing/phase-3-backend.tdd.md, testing/phase-3-frontend.md and deployment/phase-3-loans.md.
 Date: 2026-11-09
 Updated: 2026-11-10 (annuity, schedule versions, and audit discussion).
 Repository baseline: main 38b4be1 (clean at inspection).
@@ -597,7 +597,7 @@ The approved design requires configuration, but the actual nominal thresholds, a
 
 ## Frontend Technical Plan - Phase 3 (2026-11-10)
 
-Status: Proposed frontend design, explicitly requested by the owner. This extends the backend-focused plan above; it does not approve outstanding financial rules.
+Status: Implemented for local review on 2026-11-10 under the final accepted decisions and ADR-0013. Verification is recorded in testing/phase-3-frontend.md.
 
 ### Navigation and menu count
 
@@ -713,7 +713,7 @@ Follow the current Next.js Client Component, api helper, preferences provider, s
 6. Run repository frontend lint, typecheck, meaningful behavior tests and production build; verify EN/ID, both themes, keyboard operation, responsive schedules, stale lookup/preview, permission denial, duplicate clicks, ambiguous responses and refreshed balances/queues.
 7. Rebuild and restart the affected Docker service after implementation changes, as requested by the owner. Verify health and homepage, then inspect the actual application flows. This documentation-only update has no runtime image changes.
 
-No frontend code or tests are changed or executed by this planning update. Navigation and screen organization above are proposed; unresolved financial policies are still implementation blockers.
+The frontend implementation now follows the accepted local backend rules above, including partial/advance repayments. Restructuring remains read-only. Historical proposal/deferred wording is superseded by the Final Local Implementation Decisions and ADR-0013.
 
 ## Application Schedule Preview API (2026-11-10)
 

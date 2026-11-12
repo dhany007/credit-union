@@ -102,7 +102,7 @@ func TestLoanConcurrencyAndRollback(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			w := postLoanJSON(t, f, "teller.a", path, fmt.Sprintf("payout-race-key-%04d", i), input)
+			w := postLoanJSON(t, f, "supervisor", path, fmt.Sprintf("payout-race-key-%04d", i), input)
 			codes <- w.Code
 		}(i)
 	}

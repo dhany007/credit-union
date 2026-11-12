@@ -39,3 +39,5 @@ Date: YYYY-MM-DD
 - [ADR-0012: Savings interest calculation and posting](0012-savings-interest-calculation-and-posting.md) — Accepted 2026-10-23
 
 - [ADR-0013: Local Phase 3 annuity loan servicing](0013-local-annuity-loan-servicing.md) — Accepted 2026-11-10
+
+- [ADR-0014: Supervisor loan operations and sidebar navigation](0014-loan-supervisor-authority-and-navigation.md)
