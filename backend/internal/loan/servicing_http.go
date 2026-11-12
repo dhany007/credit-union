@@ -89,13 +89,14 @@ func registerAccountRoutes(r gin.IRouter, s *Service, g *auth.Handler) {
 			return
 		}
 		var in struct {
-			Amount int64 `json:"amount"`
+			Amount          int64 `json:"amount"`
+			NextInstallment bool  `json:"next_installment"`
 		}
 		if err := httpapi.Decode(c, &in); err != nil {
 			httpapi.Error(c, err)
 			return
 		}
-		out, err := s.RepaymentPreview(c.Request.Context(), id, in.Amount)
+		out, err := s.RepaymentPreview(c.Request.Context(), id, in.Amount, in.NextInstallment)
 		send(c, out, err)
 	})
 	r.POST("/loan-accounts/:id/repayments", g.Require("teller"), func(c *gin.Context) {

@@ -93,6 +93,14 @@ export function Allocations({ rows }: {
     rows: Allocation[];
 }) {
     const { t, money } = usePreferences();
+    if (rows.length === 1) {
+        const row = rows[0];
+        return <DetailList className="max-w-lg" rows={[
+            [t("Angsuran / referensi jadwal"), row.installment_number ?? "#" + row.schedule_id],
+            [t("Pokok"), money(row.principal_amount)],
+            [t("Bunga"), money(row.interest_amount)],
+        ]}/>;
+    }
     return <LocalRows rows={rows} label={t("Alokasi pembayaran")} printAll>{visible=><table className="w-full text-left text-sm">
     <caption className="text-left">{t("Alokasi pembayaran")}</caption>
     <thead>

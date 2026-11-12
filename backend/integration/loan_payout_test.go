@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"credit-union/backend/internal/loan"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -97,6 +98,23 @@ func TestLoanPayoutAndRepayment(t *testing.T) {
 	requireStatus(t, f.call("teller.a", "GET", loanPath, "", ""), 200)
 	requireStatus(t, f.call("teller.a", "GET", loanPath+"/installments", "", ""), 200)
 	requireStatus(t, f.call("teller.a", "GET", loanPath+"/schedule-versions", "", ""), 200)
+	checkInstallment := func() loan.RepaymentPreview {
+		t.Helper()
+		response := f.call("teller.b", "POST", loanPath+"/repayment-preview", "", `{"next_installment":true}`)
+		requireStatus(t, response, 200)
+		var preview loan.RepaymentPreview
+		if decodeErr := json.Unmarshal(response.Body.Bytes(), &preview); decodeErr != nil {
+			t.Fatal(decodeErr)
+		}
+		if len(preview.Allocations) != 1 {
+			t.Fatalf("expected one installment, got %+v", preview.Allocations)
+		}
+		return preview
+	}
+	first := checkInstallment()
+	if first.Amount <= 50000 || first.Allocations[0].Number != 1 {
+		t.Fatalf("unexpected first installment: %+v", first)
+	}
 	w = f.call("teller.b", "POST", loanPath+"/repayment-preview", "", `{"amount":50000}`)
 	requireStatus(t, w, 200)
 	var plan struct {
@@ -115,6 +133,10 @@ func TestLoanPayoutAndRepayment(t *testing.T) {
 	requireStatus(t, f.call("teller.b", "POST", loanPath+"/repayments", "phase3-payment-key01", payment), 200)
 	requireStatus(t, f.call("teller.b", "POST", loanPath+"/repayments", "phase3-payment-key02", payment), 409)
 	requireStatus(t, f.call("teller.a", "POST", loanPath+"/repayment-preview", "", `{"amount":999999999}`), 422)
+	remaining := checkInstallment()
+	if remaining.Amount != first.Amount-50000 || remaining.Allocations[0].Number != 1 || remaining.Allocations[0].Interest != 0 {
+		t.Fatalf("unexpected partially paid installment: %+v", remaining)
+	}
 	requireStatus(t, f.call("teller.a", "GET", loanPath+"/repayments", "", ""), 200)
 	var balance, principal, interest, unbalanced int64
 	if err = f.db.QueryRow(ctx, "SELECT balance FROM members WHERE id=$1", member).Scan(&balance); err != nil {

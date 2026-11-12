@@ -1,4 +1,6 @@
 export const messages = {
+ "Tanggal persetujuan": "Approval date",
+ "Jadwal awal sesuai persetujuan": "Initial approved schedule",
  "Bukti pembayaran": "Payment receipt",
  "Tanggal pembayaran": "Payment date",
  "Kelola pengajuan dan pencairan pinjaman.": "Manage loan applications and disbursements.",
@@ -100,7 +102,8 @@ export const messages = {
   "Lihat jadwal": "View schedule",
   "Catat pembayaran": "Record repayment",
   "Nominal pembayaran (Rp)": "Repayment amount (IDR)",
-  "Tinjau pembayaran": "Review repayment",
+  "Cek angsuran": "Check installment",
+  "Memeriksa angsuran…": "Checking installment…",
   "Pembayaran dialokasikan ke jadwal tertua: bunga lalu pokok. Kelebihan pembayaran ditolak.": "Payments go to the oldest installment: interest then principal. Overpayments are rejected.",
   "Sisa kewajiban terjadwal": "Remaining scheduled payable",
   "Lanjutkan pembayaran": "Continue repayment",

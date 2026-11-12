@@ -3,10 +3,9 @@ import { Modal } from "@/components/modal";
 import { DetailList } from "@/components/ui/detail-list";
 import { useState } from "react";
 import { api } from "@/lib/api";
-import { repaymentBody, type Account, type Installment, type Payment, type Version, type PaymentPreview, type Staff, type Receipt } from "@/lib/loans";
+import { formatLoanTimestamp, repaymentBody, type Account, type Installment, type Payment, type Version, type PaymentPreview, type Staff, type Receipt } from "@/lib/loans";
 import { usePreferences } from "@/components/preferences";
 import { Button } from "@/components/ui/button";
-import { AmountInput } from "@/components/amount-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Allocations, ErrorNotice, Field, Paged, ScheduleTable, type Execute } from "./shared";
 export function AccountDetail({ account: a, user, execute, onReceipt }: {
@@ -18,12 +17,12 @@ export function AccountDetail({ account: a, user, execute, onReceipt }: {
     const { t, money, locale } = usePreferences();
     const [section, setSection] = useState<"summary" | "schedule" | "payments" | "versions">("summary");
     const [version, setVersion] = useState(a.current_schedule_version_id);
-    const [amount, setAmount] = useState("");
     const [note, setNote] = useState("");
     const [preview, setPreview] = useState<PaymentPreview | null>(null);
     const [confirm, setConfirm] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const installment = preview?.allocations.length === 1 ? preview.allocations[0] : undefined;
     const root = "/loan-accounts/" + a.id;
     const scheduleVersion = section === "summary" ? a.current_schedule_version_id : version;
     async function review(e: React.FormEvent) {
@@ -33,7 +32,7 @@ export function AccountDetail({ account: a, user, execute, onReceipt }: {
         setConfirm(false);
         setError("");
         try {
-            setPreview(await api<PaymentPreview>(root + "/repayment-preview", { method: "POST", body: JSON.stringify({ amount: Number(amount) }) }));
+            setPreview(await api<PaymentPreview>(root + "/repayment-preview", { method: "POST", body: JSON.stringify({ next_installment: true }) }));
         }
         catch (e) {
             setError(e instanceof Error ? e.message : "Failed to fetch");
@@ -63,29 +62,39 @@ export function AccountDetail({ account: a, user, execute, onReceipt }: {
         </>}
  {section === "versions" && <Paged<Version> path={root + "/schedule-versions"} caption={t("Riwayat versi")}>{rows => <div className="space-y-4">{rows.map(v => <section key={v.id} className="rounded border p-4 space-y-2">
                 <p>#{v.version_number} · {t(v.version_type === "initial" ? "Awal" : "Restrukturisasi")} · {v.is_current_version ? t("Versi saat ini") : t("Historis")}</p>
-                <p>{v.effective_date.slice(0, 10)} · {v.interest_rate_bps / 100}% p.a. · {v.tenor_months} {t("bulan")}</p>
-                <p>{v.reason} · {t("Disetujui oleh")} #{v.approved_by} · {formatDate(v.approved_at)} WIB</p>
+                <DetailList className="max-w-lg" rows={[
+                    [t("Tanggal berlaku"), v.effective_date.slice(0, 10)],
+                    [t("Bunga pinjaman"), v.interest_rate_bps / 100 + "% p.a."],
+                    [t("Tenor pinjaman"), v.tenor_months + " " + t("bulan")],
+                    [t("Alasan perubahan"), v.reason === "Initial approved schedule" ? t("Jadwal awal sesuai persetujuan") : v.reason],
+                    [t("Disetujui oleh"), "#" + v.approved_by],
+                    [t("Tanggal persetujuan"), formatLoanTimestamp(v.approved_at, locale)],
+                ]}/>
                 <Button variant="outline" onClick={() => { setVersion(v.id); setSection("schedule"); }}>{t("Lihat jadwal")}</Button>
                 </section>)}</div>}</Paged>}
- {section === "payments" && <div className="space-y-5">{user.role === "teller" && a.status === "active" && <form onSubmit={review} className="space-y-4">
-            <fieldset disabled={loading} className="grid gap-4 sm:grid-cols-2">
-            <legend className="mb-3 font-semibold">{t("Catat pembayaran")}</legend>
-            <Field label={t("Nominal pembayaran (Rp)")}>
-            <AmountInput required value={amount} onValueChange={digits => { setAmount(digits); setPreview(null); setConfirm(false); }}/>
-            </Field>
-            <Field label={t("Catatan (opsional)")}>
-            <Textarea maxLength={500} value={note} onChange={e => { setNote(e.target.value); setConfirm(false); }}/>
-            </Field>
-            <Button>{t("Tinjau pembayaran")}</Button>
-            </fieldset>
-            <p className="text-sm text-muted-foreground">{t("Pembayaran dialokasikan ke jadwal tertua: bunga lalu pokok. Kelebihan pembayaran ditolak.")}</p>
+ {section === "payments" && <div className="space-y-5">{user.role === "teller" && a.status === "active" && <form onSubmit={review} className="space-y-3">
+            <h4 className="font-semibold">{t("Catat pembayaran")}</h4>
+            <Button type="submit" disabled={loading} variant={preview ? "outline" : "default"}>
+              {t(loading ? "Memeriksa angsuran…" : "Cek angsuran")}
+            </Button>
             </form>}
  <ErrorNotice error={error} onClose={()=>setError("")}/>{preview && <section className="space-y-3 rounded border p-4">
             <DetailList className="max-w-lg" rows={[
+              [t("Nominal pembayaran (Rp)"), money(preview.amount)],
+              ...(installment ? [
+                [t("Angsuran / referensi jadwal"), installment.installment_number ?? "#" + installment.schedule_id] as const,
+                [t("Pokok"), money(installment.principal_amount)] as const,
+                [t("Bunga"), money(installment.interest_amount)] as const,
+              ] : []),
               [t("Sisa pokok aktual"), money(preview.principal_before) + " → " + money(preview.principal_after)],
               [t("Sisa kewajiban terjadwal"), money(preview.outstanding_payable)],
             ]}/>
-            <Allocations rows={preview.allocations}/>
+            {!installment && <Allocations rows={preview.allocations}/>}
+            <div className="max-w-lg">
+              <Field label={t("Catatan (opsional)")}>
+                <Textarea rows={2} maxLength={500} value={note} onChange={e => setNote(e.target.value)}/>
+              </Field>
+            </div>
             <Button onClick={() => setConfirm(true)}>{t("Lanjutkan pembayaran")}</Button>
             <Modal open={confirm} onClose={() => setConfirm(false)} title={t("Konfirmasi pembayaran")}
               footer={<>
@@ -107,8 +116,13 @@ export function AccountDetail({ account: a, user, execute, onReceipt }: {
 
  <Paged<Payment> path={root + "/repayments"} caption={t("Riwayat pembayaran")}>{rows => <div className="space-y-4">{rows.map(r => <section key={r.id} className="rounded border p-4 space-y-2">
                 <h4 className="font-semibold">{r.repayment_number} · {money(r.amount)}</h4>
-                <p>{formatDate(r.paid_at)} WIB · {r.branch} · {r.actor}</p>
-                <p>{t("Transaksi")} #{r.transaction_id} · {r.note}</p>
+                <DetailList className="max-w-lg" rows={[
+                    [t("Tanggal pembayaran"), formatLoanTimestamp(r.paid_at, locale)],
+                    [t("KCP pemroses"), r.branch],
+                    [t("Petugas"), r.actor],
+                    [t("Referensi"), r.transaction_id],
+                    ...(r.note?.trim() ? [[t("Catatan (opsional)"), r.note] as const] : []),
+                ]}/>
                 <Allocations rows={r.allocations}/>
                 <Button variant="outline" onClick={() => onReceipt({ loan_id: a.id, loan_number: a.loan_number, repayment_number: r.repayment_number, reference: r.transaction_id, amount: r.amount, paid_at: r.paid_at, actor: r.actor, branch: r.branch, allocations: r.allocations })}>{t("Lihat bukti pembayaran")}</Button>
                 </section>)}</div>}</Paged>
